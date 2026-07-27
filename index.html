@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0E1B2B">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Phil's Assets</title>
+<title>PHIL'S BORD</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
@@ -30,6 +30,7 @@
   html,body{
     height:100%; margin:0; overflow:hidden; overscroll-behavior:none;
     background:var(--bg); color:var(--ink); font-family:var(--font-sans);
+    background-position:center; background-repeat:no-repeat;
   }
   #grid-bg{
     position:fixed; inset:0; pointer-events:none; z-index:0;
@@ -38,6 +39,7 @@
       linear-gradient(90deg, var(--line-soft) 1px, transparent 1px);
     background-size:28px 28px;
     opacity:.35;
+    transition:opacity 200ms ease;
   }
   .corner-mark{ position:fixed; width:14px; height:14px; pointer-events:none; z-index:1; opacity:.3; }
   .corner-mark::before,.corner-mark::after{ content:''; position:absolute; background:var(--accent-2); }
@@ -95,6 +97,15 @@
   #menu-pop button:active{ background:var(--surface); }
   #menu-pop button.danger{ color:#F27E9C; }
 
+  #about-btn{
+    position:fixed; bottom:calc(env(safe-area-inset-bottom,0px) + 10px); left:10px; z-index:21;
+    width:26px; height:26px; border-radius:50%; border:1px solid var(--line);
+    background:var(--surface); color:var(--ink-faint); font-family:var(--font-mono);
+    font-size:12px; font-weight:600; display:flex; align-items:center; justify-content:center;
+    opacity:.75;
+  }
+  #about-btn:active{ opacity:1; border-color:var(--accent-2); color:var(--accent-2); }
+
   main#board-wrap{
     position:absolute; inset:0; z-index:5;
     overflow-y:auto; -webkit-overflow-scrolling:touch;
@@ -118,16 +129,15 @@
   .detail h1{ font-family:var(--font-mono); font-size:19px; margin:0; flex:1 1 auto; word-break:break-word; }
   .detail-pitch{ color:var(--ink); font-size:13.5px; font-style:italic; margin:7px 0 4px; }
   .detail-notes{ color:var(--ink-dim); font-size:13px; line-height:1.55; white-space:pre-wrap; margin:8px 0 0; }
-  .detail-notes.empty{ color:var(--ink-faint); font-style:italic; }
   .icon-btn{
     flex:0 0 auto; width:30px; height:30px; border-radius:7px; border:1px solid var(--line);
     background:var(--surface); color:var(--ink-dim); font-size:13px;
   }
   .detail-hero{
-    position:relative; overflow:hidden; margin:-10px -16px 12px; height:208px;
+    position:relative; overflow:hidden; margin:-10px -16px 12px; height:64vh; min-height:260px;
     display:flex; align-items:flex-end; padding:14px 16px; cursor:pointer;
   }
-  /* Capa 1: la misma imagen, ampliada y desenfocada, ocupando todo el header —
+  /* Capa 1: la misma imagen, ampliada y desenfocada, ocupando todo el header,
      así una foto de cualquier proporción "llena" el espacio sin recortarse mal. */
   .detail-hero .hero-blur-bg{
     position:absolute; inset:-26px; z-index:0;
@@ -208,7 +218,7 @@
   .card.has-image .edit-btn:active{ background:rgba(0,0,0,.35); border-color:rgba(255,255,255,.25); }
   .card.size-v{ grid-column:span 1; }
   /* "hh" (doble horizontal) ya no comparte la media-altura de "h": ahora es tan alta
-     como una tarjeta Completa, solo que el doble de ancha — así el título, la nota
+     como una tarjeta Completa, solo que el doble de ancha, así el título, la nota
      completa y el footer quedan visibles sin recortarse. */
   .card.size-h{ grid-row:span 1; padding:6px 8px 5px; }
   .card.size-h .card-title{ font-size:11px; margin-bottom:2px; }
@@ -251,8 +261,6 @@
   .add-plus{ font-size:20px; color:var(--accent); line-height:1; }
   .add-label{ font-family:var(--font-mono); font-size:9.5px; color:var(--ink-dim); text-transform:uppercase; letter-spacing:.05em; }
 
-  .empty-hint{ padding:0 16px 12px; color:var(--ink-faint); font-size:12.5px; font-style:italic; }
-
   #toast{
     position:fixed; left:50%; bottom:calc(env(safe-area-inset-bottom,0px) + 18px); z-index:40;
     transform:translate(-50%, 16px); background:var(--surface-2); border:1px solid var(--line);
@@ -262,19 +270,19 @@
   }
   #toast.show{ opacity:1; transform:translate(-50%,0); }
 
-  #sheet-overlay, #io-overlay{
+  #sheet-overlay, #io-overlay, #bg-overlay, #about-overlay{
     position:fixed; inset:0; background:rgba(4,10,18,.55); z-index:29;
     opacity:0; pointer-events:none; transition:opacity 220ms;
   }
-  #sheet-overlay.open, #io-overlay.open{ opacity:1; pointer-events:auto; }
-  #sheet, #io-sheet{
+  #sheet-overlay.open, #io-overlay.open, #bg-overlay.open, #about-overlay.open{ opacity:1; pointer-events:auto; }
+  #sheet, #io-sheet, #bg-sheet, #about-sheet{
     position:fixed; left:0; right:0; bottom:0; z-index:30; max-height:88vh; overflow-y:auto;
     background:var(--surface-2); border:1px solid var(--line); border-bottom:none;
     border-radius:16px 16px 0 0; padding:14px 16px calc(env(safe-area-inset-bottom,0px) + 18px);
     transform:translateY(105%); transition:transform 260ms cubic-bezier(.22,.85,.32,1);
     box-shadow:0 -12px 32px rgba(0,0,0,.4);
   }
-  #sheet.open, #io-sheet.open{ transform:translateY(0); }
+  #sheet.open, #io-sheet.open, #bg-sheet.open, #about-sheet.open{ transform:translateY(0); }
   #io-export-text, #io-import-text{ min-height:130px; font-family:var(--font-mono); font-size:11px; line-height:1.4; }
   .sheet-handle{ width:36px; height:4px; background:var(--line); border-radius:3px; margin:0 auto 12px; }
   .sheet-title{ font-family:var(--font-mono); font-size:14px; text-transform:uppercase; letter-spacing:.05em; margin:0 0 14px; color:var(--ink-dim); }
@@ -284,8 +292,13 @@
     width:100%; background:var(--surface); border:1px solid var(--line); border-radius:8px;
     color:var(--ink); font-family:var(--font-sans); font-size:16px; padding:10px 11px;
   }
+  .field input[type=color]{
+    width:100%; height:42px; border:1px solid var(--line); border-radius:8px;
+    background:var(--surface); padding:2px;
+  }
   .field textarea{ min-height:90px; resize:vertical; line-height:1.4; }
   .field .hint{ margin-top:5px; font-size:11px; color:var(--ink-faint); }
+  .about-text{ color:var(--ink-dim); font-size:13px; line-height:1.65; margin:0 0 16px; }
   .swatches{ display:flex; gap:9px; flex-wrap:wrap; padding-top:2px; }
   .swatch{ width:28px; height:28px; border-radius:50%; border:2px solid transparent; }
   .swatch.selected{ border-color:var(--ink); }
@@ -333,11 +346,11 @@
     .card-note{ font-size:11px; }
     .detail{ padding:8px 12px 8px; margin:0 12px 10px; }
     .detail h1{ font-size:17px; }
-    .detail-hero{ margin:-8px -12px 10px; height:172px; }
+    .detail-hero{ margin:-8px -12px 10px; height:58vh; min-height:220px; }
     .gallery-slider{ margin:10px -12px 2px; padding:0 12px 4px; }
   }
   @media (prefers-reduced-motion: reduce){
-    .board, #sheet, #sheet-overlay, #io-sheet, #io-overlay, #menu-pop, #lightbox, #lightbox-overlay{ transition-duration:1ms !important; }
+    .board, #sheet, #sheet-overlay, #io-sheet, #io-overlay, #bg-sheet, #bg-overlay, #about-sheet, #about-overlay, #menu-pop, #lightbox, #lightbox-overlay{ transition-duration:1ms !important; }
     .card{ animation:none !important; }
     .card.dragging{ transform:none; transition:none; }
   }
@@ -397,10 +410,12 @@
   </header>
   <button id="menu-btn" aria-label="Menú">⋮</button>
   <div id="menu-pop">
+    <button id="menu-bg">🎨 Fondo del tablero</button>
     <button id="menu-export">⇪ Exportar datos</button>
     <button id="menu-import">⇩ Importar datos</button>
     <button id="menu-clear" class="danger">🗑 Vaciar todo</button>
   </div>
+  <button id="about-btn" aria-label="Acerca de">?</button>
 
   <main id="board-wrap"><div id="board" class="board"></div></main>
   <div id="toast"></div>
@@ -441,7 +456,7 @@
       <p class="hint">Dos "Mitad horizontal" seguidas en la lista se acomodan solas para ocupar 1 celda entre las dos. "Doble horizontal" tiene la altura completa (como "Completa"), solo que el doble de ancha.</p>
     </div>
     <div class="field">
-      <label for="f-image-url">Imagen principal — fondo (opcional)</label>
+      <label for="f-image-url">Imagen principal, fondo (opcional)</label>
       <input type="text" id="f-image-url" placeholder="Pegá un link de imagen…">
       <div class="image-row">
         <button type="button" class="chip-btn" id="f-image-pick">Subir imagen</button>
@@ -449,7 +464,7 @@
       </div>
       <input type="file" id="f-image-file" accept="image/*" hidden>
       <div id="f-image-preview" class="image-preview"></div>
-      <p class="hint">Mejor un link liviano — las imágenes subidas quedan guardadas en el navegador y ocupan más espacio.</p>
+      <p class="hint">Mejor un link liviano, las imágenes subidas quedan guardadas en el navegador y ocupan más espacio.</p>
     </div>
     <div class="field">
       <label>Más imágenes (opcional)</label>
@@ -481,7 +496,7 @@
     <p class="sheet-title" id="io-title">Exportar</p>
 
     <div id="io-export-view">
-      <p class="hint" style="margin:0 0 10px;">Copiá este texto o descargalo como archivo para pasarlo a otro dispositivo.</p>
+      <p class="hint" style="margin:0 0 10px;">Copiá este texto o descargalo como archivo para pasarlo a otro dispositivo. Incluye tus piezas y el fondo elegido.</p>
       <div class="field"><textarea id="io-export-text" readonly></textarea></div>
       <div class="image-row">
         <button type="button" class="chip-btn" id="io-copy">Copiar</button>
@@ -505,6 +520,55 @@
     </div>
   </div>
 
+  <div id="bg-overlay"></div>
+  <div id="bg-sheet">
+    <div class="sheet-handle"></div>
+    <p class="sheet-title">Fondo del tablero</p>
+    <div class="field">
+      <label>Tipo</label>
+      <div class="status-row" id="bg-type">
+        <div class="status-opt" data-v="grid">Grilla</div>
+        <div class="status-opt" data-v="color">Color</div>
+        <div class="status-opt" data-v="image">Imagen</div>
+      </div>
+    </div>
+    <div class="field" id="bg-color-field" style="display:none;">
+      <label for="bg-color-input">Color de fondo</label>
+      <input type="color" id="bg-color-input" value="#0E1B2B">
+    </div>
+    <div class="field" id="bg-image-field" style="display:none;">
+      <label for="bg-image-url">Imagen de fondo</label>
+      <input type="text" id="bg-image-url" placeholder="Pegá un link de imagen…">
+      <div class="image-row">
+        <button type="button" class="chip-btn" id="bg-image-pick">Subir imagen</button>
+      </div>
+      <input type="file" id="bg-image-file" accept="image/*" hidden>
+      <div id="bg-image-preview" class="image-preview"></div>
+      <div class="field" style="margin-top:12px;">
+        <label>Ajuste</label>
+        <div class="status-row" id="bg-fit">
+          <div class="status-opt" data-v="cover">Cubrir</div>
+          <div class="status-opt" data-v="contain">Ajustar</div>
+          <div class="status-opt" data-v="stretch">Estirar</div>
+        </div>
+      </div>
+    </div>
+    <div class="sheet-actions">
+      <button class="btn btn-ghost" id="bg-cancel">Cancelar</button>
+      <button class="btn btn-primary" id="bg-save">Guardar</button>
+    </div>
+  </div>
+
+  <div id="about-overlay"></div>
+  <div id="about-sheet">
+    <div class="sheet-handle"></div>
+    <p class="sheet-title">Acerca de PHIL'S BORD</p>
+    <p class="about-text">PHIL'S BORD nace de la búsqueda de una pizarra simple para volcar ideas y contenido de forma fácil e intuitiva: tocá una pieza para profundizar, volvé atrás para alejarte. Todo se guarda en este dispositivo y vos sos dueño o dueña del archivo que exportás o importás.</p>
+    <div class="sheet-actions">
+      <button class="btn btn-primary" id="about-close" style="flex:1;">Cerrar</button>
+    </div>
+  </div>
+
   <div id="lightbox-overlay"></div>
   <div id="lightbox">
     <button id="lightbox-close" aria-label="Cerrar">✕</button>
@@ -520,6 +584,7 @@
   const PALETTE = ['#4FD1C5','#FF8A5C','#C9A5F2','#FFD166','#7FB3FF','#F27E9C','#9AE6B4','#F6AD55'];
   const STORAGE_KEY = 'idea-tree';
   const SIZE_SPANS = { full:{w:2,h:2}, v:{w:1,h:2}, h:{w:2,h:1}, hh:{w:4,h:2} };
+  const DEFAULT_SETTINGS = { bgType:'grid', bgColor:'#0E1B2B', bgImage:'', bgFit:'cover' };
 
   function uid(){
     if(window.crypto && crypto.randomUUID) return crypto.randomUUID();
@@ -555,12 +620,22 @@
       children: Array.isArray(n.children) ? n.children.map(normalizeNode).filter(Boolean) : []
     };
   }
+  function normalizeSettings(s){
+    if(!s || typeof s !== 'object') return Object.assign({}, DEFAULT_SETTINGS);
+    return {
+      bgType: ['grid','color','image'].includes(s.bgType) ? s.bgType : DEFAULT_SETTINGS.bgType,
+      bgColor: (typeof s.bgColor === 'string' && s.bgColor) ? s.bgColor : DEFAULT_SETTINGS.bgColor,
+      bgImage: typeof s.bgImage === 'string' ? s.bgImage : DEFAULT_SETTINGS.bgImage,
+      bgFit: ['cover','contain','stretch'].includes(s.bgFit) ? s.bgFit : DEFAULT_SETTINGS.bgFit
+    };
+  }
   function seedTree(){
-    return node({ title:"Phil's Assets" });
+    return node({ title:"PHIL'S BORD" });
   }
 
   let tree = null;
   let stack = [];
+  let appSettings = Object.assign({}, DEFAULT_SETTINGS);
   let isAnimating = false;
   let sheetMode = 'create';
   let editingTarget = null;
@@ -579,6 +654,7 @@
   const menuBtn = document.getElementById('menu-btn');
   const menuPop = document.getElementById('menu-pop');
   const toastEl = document.getElementById('toast');
+  const gridBgEl = document.getElementById('grid-bg');
 
   function escapeHtml(str){
     return (str||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -593,7 +669,6 @@
     showToast._t = setTimeout(()=> toastEl.classList.remove('show'), 3400);
   }
 
-  
   function storageGet(key){
     try{ return localStorage.getItem(key); }catch(e){ return null; }
   }
@@ -602,18 +677,48 @@
     catch(e){ showToast('No se pudo guardar (espacio lleno). Probá con una imagen más liviana o un link.'); return false; }
   }
 
+  function applyBackground(){
+    if(appSettings.bgType === 'image' && appSettings.bgImage){
+      document.body.style.backgroundColor = '';
+      document.body.style.backgroundImage = `url("${appSettings.bgImage.replace(/"/g,'\\"')}")`;
+      document.body.style.backgroundSize = appSettings.bgFit === 'contain' ? 'contain' : appSettings.bgFit === 'stretch' ? '100% 100%' : 'cover';
+      gridBgEl.style.opacity = '0';
+    } else if(appSettings.bgType === 'color'){
+      document.body.style.backgroundImage = 'none';
+      document.body.style.backgroundColor = appSettings.bgColor || DEFAULT_SETTINGS.bgColor;
+      gridBgEl.style.opacity = '0';
+    } else {
+      document.body.style.backgroundImage = '';
+      document.body.style.backgroundColor = '';
+      gridBgEl.style.opacity = '';
+    }
+  }
+
   async function loadTree(){
     const raw = await storageGet(STORAGE_KEY);
-    let parsed = null;
-    if(raw){ try{ parsed = JSON.parse(raw); }catch(e){ parsed = null; } }
-    tree = parsed || seedTree();
-    if(!parsed) persist();
+    let parsedTree = null, parsedSettings = null, hadData = false;
+    if(raw){
+      try{
+        const parsed = JSON.parse(raw);
+        if(parsed && typeof parsed === 'object' && parsed.tree){
+          parsedTree = parsed.tree;
+          parsedSettings = parsed.settings;
+        } else {
+          parsedTree = parsed;
+        }
+        hadData = true;
+      }catch(e){ parsedTree = null; }
+    }
+    tree = hadData ? (normalizeNode(parsedTree) || seedTree()) : seedTree();
+    appSettings = normalizeSettings(parsedSettings);
+    applyBackground();
+    if(!hadData) persist();
     stack = [tree];
     render();
   }
   function persist(){
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(()=>{ storageSet(STORAGE_KEY, JSON.stringify(tree)); }, 350);
+    saveTimer = setTimeout(()=>{ storageSet(STORAGE_KEY, JSON.stringify({ tree, settings: appSettings })); }, 350);
   }
 
   // ---- Grid packer: explicit placement so half-height ("h"/"hh") pairs stack correctly ----
@@ -678,12 +783,23 @@
       }
       const b = document.createElement('button');
       b.className = 'crumb' + (i===stack.length-1 ? ' current' : '');
-      b.textContent = i===0 ? "Phil's Assets" : n.title;
+      b.textContent = n.title;
       if(i !== stack.length-1){
         b.addEventListener('click', ()=>{ if(!isAnimating) jumpTo(i); });
       }
+      if(i === 0){
+        b.addEventListener('dblclick', (e)=>{ e.stopPropagation(); renameRoot(); });
+      }
       crumbsEl.appendChild(b);
     });
+  }
+  function renameRoot(){
+    const current = (prompt('Nombre del tablero:', tree.title) || '').trim();
+    if(!current) return;
+    tree.title = current;
+    document.title = current;
+    persist();
+    render();
   }
   function renderBoardContent(){
     boardEl.innerHTML = '';
@@ -692,7 +808,7 @@
       const det = document.createElement('div');
       det.className = 'detail';
       const pitchHtml = current.pitch ? `<p class="detail-pitch">${escapeHtml(current.pitch)}</p>` : '';
-      const notesHtml = `<p class="detail-notes ${current.notes ? '' : 'empty'}">${current.notes ? escapeHtml(current.notes) : 'Sin notas todavía — editá para agregar contexto.'}</p>`;
+      const notesHtml = current.notes ? `<p class="detail-notes">${escapeHtml(current.notes)}</p>` : '';
       const galleryHtml = (current.gallery && current.gallery.length) ? `<div class="gallery-slider" id="detail-gallery"></div>` : '';
       const media = [];
       if(current.image) media.push(current.image);
@@ -742,13 +858,6 @@
 
     const grid = document.createElement('div');
     grid.className = 'grid';
-
-    if(current.children.length === 0){
-      const hint = document.createElement('div');
-      hint.className = 'empty-hint';
-      hint.textContent = 'Todavía no hay nada acá. Tocá + para crear.';
-      boardEl.appendChild(hint);
-    }
 
     current.children.forEach((child, i)=>{
       grid.appendChild(makeCard(child, i));
@@ -804,9 +913,6 @@
   }
 
   // ---- Mantener apretado sobre la tarjeta (no solo el handle) para reordenar ----
-  // Pensado para tablet: no hace falta acertarle al ícono chico, alcanza con
-  // mantener el dedo quieto sobre el ítem. Si se mueve antes de tiempo, se
-  // interpreta como scroll normal de la página y se cancela.
   const LONG_PRESS_MS = 420;
   const LONG_PRESS_TOLERANCE = 8;
   function attachLongPress(card){
@@ -1196,7 +1302,7 @@
     ioExportView.style.display = mode === 'export' ? 'block' : 'none';
     ioImportView.style.display = mode === 'import' ? 'block' : 'none';
     ioImportBtn.style.display = mode === 'import' ? 'block' : 'none';
-    if(mode === 'export') ioExportText.value = JSON.stringify(tree, null, 2);
+    if(mode === 'export') ioExportText.value = JSON.stringify({ tree, settings: appSettings }, null, 2);
     else ioImportText.value = '';
     ioOverlay.classList.add('open');
     ioSheetEl.classList.add('open');
@@ -1219,7 +1325,7 @@
       showToast('Copiado.');
     }catch(e){
       try{ ioExportText.select(); document.execCommand('copy'); showToast('Copiado.'); }
-      catch(e2){ showToast('No se pudo copiar — seleccioná el texto y copiá a mano.'); }
+      catch(e2){ showToast('No se pudo copiar, seleccioná el texto y copiá a mano.'); }
     }
   });
   document.getElementById('io-download').addEventListener('click', ()=>{
@@ -1227,7 +1333,7 @@
       const blob = new Blob([ioExportText.value], { type:'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url; a.download = 'phils-assets.json';
+      a.href = url; a.download = 'phils-bord.json';
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(()=> URL.revokeObjectURL(url), 1000);
     }catch(e){ showToast('No se pudo descargar el archivo.'); }
@@ -1247,10 +1353,20 @@
     let parsedRaw;
     try{ parsedRaw = JSON.parse(raw); }
     catch(e){ showToast('Ese texto no es un JSON válido.'); return; }
-    const normalized = normalizeNode(parsedRaw);
+    let importedTree = parsedRaw, importedSettings = null;
+    if(parsedRaw && typeof parsedRaw === 'object' && parsedRaw.tree){
+      importedTree = parsedRaw.tree;
+      importedSettings = parsedRaw.settings;
+    }
+    const normalized = normalizeNode(importedTree);
     if(!normalized){ showToast('El archivo no tiene el formato esperado.'); return; }
     if(!confirm('Esto reemplaza todo lo que tenés cargado ahora en este dispositivo. ¿Continuar?')) return;
     tree = normalized;
+    document.title = tree.title || "PHIL'S BORD";
+    if(importedSettings){
+      appSettings = normalizeSettings(importedSettings);
+      applyBackground();
+    }
     stack = [tree];
     persist();
     render();
@@ -1258,10 +1374,99 @@
     showToast('Importado.');
   });
 
+  // ---- Fondo del tablero ----
+  const bgOverlay = document.getElementById('bg-overlay');
+  const bgSheetEl = document.getElementById('bg-sheet');
+  const bgTypeRow = document.getElementById('bg-type');
+  const bgColorField = document.getElementById('bg-color-field');
+  const bgImageField = document.getElementById('bg-image-field');
+  const bgColorInput = document.getElementById('bg-color-input');
+  const bgImageUrl = document.getElementById('bg-image-url');
+  const bgImageFile = document.getElementById('bg-image-file');
+  const bgImagePick = document.getElementById('bg-image-pick');
+  const bgImagePreview = document.getElementById('bg-image-preview');
+  const bgFitRow = document.getElementById('bg-fit');
+  let draftBg = null;
+
+  function refreshBgType(){
+    [...bgTypeRow.children].forEach(opt=> opt.classList.toggle('selected', opt.dataset.v === draftBg.bgType));
+    bgColorField.style.display = draftBg.bgType === 'color' ? 'block' : 'none';
+    bgImageField.style.display = draftBg.bgType === 'image' ? 'block' : 'none';
+  }
+  function refreshBgFit(){
+    [...bgFitRow.children].forEach(opt=> opt.classList.toggle('selected', opt.dataset.v === draftBg.bgFit));
+  }
+  function updateBgImagePreview(){
+    if(draftBg.bgImage){
+      bgImagePreview.style.backgroundImage = `url("${draftBg.bgImage.replace(/"/g,'')}")`;
+      bgImagePreview.classList.add('show');
+    } else {
+      bgImagePreview.style.backgroundImage = '';
+      bgImagePreview.classList.remove('show');
+    }
+  }
+  [...bgTypeRow.children].forEach(opt=>{
+    opt.addEventListener('click', ()=>{ draftBg.bgType = opt.dataset.v; refreshBgType(); });
+  });
+  [...bgFitRow.children].forEach(opt=>{
+    opt.addEventListener('click', ()=>{ draftBg.bgFit = opt.dataset.v; refreshBgFit(); });
+  });
+  bgColorInput.addEventListener('input', ()=>{ draftBg.bgColor = bgColorInput.value; });
+  bgImageUrl.addEventListener('input', ()=>{ draftBg.bgImage = bgImageUrl.value.trim(); updateBgImagePreview(); });
+  bgImagePick.addEventListener('click', ()=> bgImageFile.click());
+  bgImageFile.addEventListener('change', ()=>{
+    const file = bgImageFile.files && bgImageFile.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ()=>{ draftBg.bgImage = reader.result; bgImageUrl.value = ''; updateBgImagePreview(); };
+    reader.readAsDataURL(file);
+    bgImageFile.value = '';
+  });
+  function openBgSheet(){
+    draftBg = Object.assign({}, appSettings);
+    bgColorInput.value = draftBg.bgColor || DEFAULT_SETTINGS.bgColor;
+    bgImageUrl.value = (draftBg.bgImage && !draftBg.bgImage.startsWith('data:')) ? draftBg.bgImage : '';
+    updateBgImagePreview();
+    refreshBgType(); refreshBgFit();
+    bgOverlay.classList.add('open');
+    bgSheetEl.classList.add('open');
+  }
+  function closeBgSheet(){
+    bgOverlay.classList.remove('open');
+    bgSheetEl.classList.remove('open');
+  }
+  bgOverlay.addEventListener('click', closeBgSheet);
+  document.getElementById('bg-cancel').addEventListener('click', closeBgSheet);
+  document.getElementById('bg-save').addEventListener('click', ()=>{
+    appSettings = Object.assign({}, draftBg);
+    applyBackground();
+    persist();
+    closeBgSheet();
+  });
+
+  // ---- Acerca de ----
+  const aboutBtn = document.getElementById('about-btn');
+  const aboutOverlay = document.getElementById('about-overlay');
+  const aboutSheetEl = document.getElementById('about-sheet');
+  function closeAbout(){
+    aboutOverlay.classList.remove('open');
+    aboutSheetEl.classList.remove('open');
+  }
+  aboutBtn.addEventListener('click', ()=>{
+    aboutOverlay.classList.add('open');
+    aboutSheetEl.classList.add('open');
+  });
+  aboutOverlay.addEventListener('click', closeAbout);
+  document.getElementById('about-close').addEventListener('click', closeAbout);
+
   // ---- Menu ----
   menuBtn.addEventListener('click', ()=> menuPop.classList.toggle('open'));
   document.addEventListener('click', (e)=>{
     if(!menuPop.contains(e.target) && e.target !== menuBtn) menuPop.classList.remove('open');
+  });
+  document.getElementById('menu-bg').addEventListener('click', ()=>{
+    menuPop.classList.remove('open');
+    openBgSheet();
   });
   document.getElementById('menu-export').addEventListener('click', ()=>{
     menuPop.classList.remove('open');
@@ -1274,7 +1479,10 @@
   document.getElementById('menu-clear').addEventListener('click', ()=>{
     menuPop.classList.remove('open');
     if(!confirm('Esto borra todo. ¿Continuar?')) return;
-    tree = node({ title:"Phil's Assets" });
+    tree = node({ title:"PHIL'S BORD" });
+    document.title = "PHIL'S BORD";
+    appSettings = Object.assign({}, DEFAULT_SETTINGS);
+    applyBackground();
     stack = [tree];
     persist();
     render();
@@ -1324,7 +1532,6 @@
       });
     }
   }
-  // Wrap con módulo: al pasar la última vuelve a la primera y viceversa (infinito).
   function lbShow(delta){
     lbIndex = (lbIndex + delta + lbImages.length) % lbImages.length;
     renderLightbox();
@@ -1344,7 +1551,6 @@
     else if(e.key === 'ArrowRight') lbShow(1);
   });
 
-  // Deslizar con el dedo (o mouse) para pasar de imagen — con wrap infinito.
   let lbDragging = false, lbDragStartX = 0, lbDragDX = 0, lbDragPointerId = null;
   lightboxStageEl.addEventListener('pointerdown', (e)=>{
     if(lbImages.length < 2) return;
