@@ -124,25 +124,46 @@
     background:var(--surface); color:var(--ink-dim); font-size:13px;
   }
   .detail-hero{
-    position:relative; margin:-10px -16px 12px; height:168px;
-    background-image: linear-gradient(180deg, rgba(14,27,43,0) 28%, var(--bg) 100%), var(--hero-img);
-    background-size:cover; background-position:center;
-    display:flex; align-items:flex-end; padding:14px 16px;
+    position:relative; overflow:hidden; margin:-10px -16px 12px; height:208px;
+    display:flex; align-items:flex-end; padding:14px 16px; cursor:pointer;
   }
-  .detail-hero .hero-title{ font-family:var(--font-mono); font-size:20px; margin:0; color:#fff; text-shadow:0 2px 12px rgba(0,0,0,.55); }
+  /* Capa 1: la misma imagen, ampliada y desenfocada, ocupando todo el header —
+     así una foto de cualquier proporción "llena" el espacio sin recortarse mal. */
+  .detail-hero .hero-blur-bg{
+    position:absolute; inset:-26px; z-index:0;
+    background-image:var(--hero-img); background-size:cover; background-position:center;
+    filter:blur(26px) saturate(1.3) brightness(.55); transform:scale(1.15);
+  }
+  /* Capa 2: la imagen completa, sin recortar (contain), centrada sobre el fondo. */
+  .detail-hero .hero-fg-img{
+    position:absolute; inset:0; z-index:0;
+    background-image:var(--hero-img); background-size:contain; background-position:center; background-repeat:no-repeat;
+  }
+  .detail-hero .hero-fade{
+    position:absolute; inset:0; z-index:0;
+    background:linear-gradient(180deg, rgba(14,27,43,0) 32%, var(--bg) 100%);
+  }
+  .detail-hero .hero-expand{
+    position:absolute; top:10px; right:10px; z-index:2;
+    width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    background:rgba(8,14,22,.55); border:1px solid rgba(255,255,255,.25); color:#fff; font-size:12px;
+  }
+  .detail-hero .hero-title{ position:relative; z-index:2; font-family:var(--font-mono); font-size:20px; margin:0; color:#fff; text-shadow:0 2px 12px rgba(0,0,0,.55); }
 
   .gallery-slider{
-    display:flex; gap:8px; overflow-x:auto; scroll-snap-type:x mandatory;
-    -webkit-overflow-scrolling:touch; margin:12px -16px 2px; padding:0 16px 6px;
+    display:flex; gap:6px; overflow-x:auto; scroll-snap-type:x proximity;
+    -webkit-overflow-scrolling:touch; margin:10px -16px 2px; padding:0 16px 4px;
     scrollbar-width:none;
   }
   .gallery-slider::-webkit-scrollbar{ display:none; }
   .gallery-slide{
-    flex:0 0 76%; max-width:340px; aspect-ratio:16/10; border-radius:10px;
-    background-size:cover; background-position:center; scroll-snap-align:center;
+    flex:0 0 82px; width:82px; height:82px; border-radius:9px;
+    background-size:cover; background-position:center; scroll-snap-align:start;
     border:1px solid var(--line); background-color:var(--surface);
+    cursor:pointer; transition:transform 120ms ease;
   }
-  @media (min-width:560px){ .gallery-slide{ flex-basis:46%; } }
+  .gallery-slide:active{ transform:scale(.93); }
+
 
   .pill{
     display:inline-block; font-family:var(--font-mono); font-size:9.5px; letter-spacing:.06em;
@@ -312,17 +333,57 @@
     .card-note{ font-size:11px; }
     .detail{ padding:8px 12px 8px; margin:0 12px 10px; }
     .detail h1{ font-size:17px; }
-    .detail-hero{ margin:-8px -12px 10px; height:140px; }
-    .gallery-slider{ margin:12px -12px 2px; padding:0 12px 6px; }
+    .detail-hero{ margin:-8px -12px 10px; height:172px; }
+    .gallery-slider{ margin:10px -12px 2px; padding:0 12px 4px; }
   }
   @media (prefers-reduced-motion: reduce){
-    .board, #sheet, #sheet-overlay, #io-sheet, #io-overlay, #menu-pop{ transition-duration:1ms !important; }
+    .board, #sheet, #sheet-overlay, #io-sheet, #io-overlay, #menu-pop, #lightbox, #lightbox-overlay{ transition-duration:1ms !important; }
     .card{ animation:none !important; }
     .card.dragging{ transform:none; transition:none; }
   }
   @media (min-width:900px){
     #board-wrap{ max-width:1100px; margin:0 auto; }
   }
+
+  /* ---- Lightbox: ampliar imagen a pantalla completa con sliding infinito ---- */
+  #lightbox-overlay{
+    position:fixed; inset:0; background:rgba(4,8,14,.94); z-index:49;
+    opacity:0; pointer-events:none; transition:opacity 200ms;
+  }
+  #lightbox-overlay.open{ opacity:1; pointer-events:auto; }
+  #lightbox{
+    position:fixed; inset:0; z-index:50;
+    opacity:0; pointer-events:none; transition:opacity 200ms;
+  }
+  #lightbox.open{ opacity:1; pointer-events:auto; }
+  #lightbox-stage{
+    width:100%; height:100%; display:flex; align-items:center; justify-content:center;
+    padding:52px 58px; touch-action:pan-y;
+  }
+  #lightbox-img{
+    max-width:100%; max-height:100%; object-fit:contain; border-radius:6px;
+    -webkit-user-select:none; user-select:none; -webkit-user-drag:none;
+    transition:opacity 150ms ease, transform 200ms ease;
+  }
+  #lightbox-close{
+    position:fixed; top:calc(env(safe-area-inset-top,0px) + 12px); right:12px; z-index:51;
+    width:36px; height:36px; border-radius:50%; border:1px solid var(--line);
+    background:var(--surface-2); color:var(--ink); font-size:15px;
+  }
+  #lightbox-prev, #lightbox-next{
+    position:fixed; top:50%; transform:translateY(-50%); z-index:51;
+    width:40px; height:40px; border-radius:50%; border:1px solid var(--line);
+    background:var(--surface-2); color:var(--ink); font-size:19px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  #lightbox-prev{ left:10px; }
+  #lightbox-next{ right:10px; }
+  #lightbox-dots{
+    position:fixed; left:0; right:0; bottom:calc(env(safe-area-inset-bottom,0px) + 14px);
+    display:flex; justify-content:center; gap:6px; z-index:51; pointer-events:none;
+  }
+  .lightbox-dot{ width:6px; height:6px; border-radius:50%; background:var(--ink-faint); opacity:.5; }
+  .lightbox-dot.active{ background:var(--accent-2); opacity:1; }
 </style>
 </head>
 <body>
@@ -442,6 +503,15 @@
       <button class="btn btn-ghost" id="io-cancel">Cerrar</button>
       <button class="btn btn-primary" id="io-import-btn" style="display:none;">Importar</button>
     </div>
+  </div>
+
+  <div id="lightbox-overlay"></div>
+  <div id="lightbox">
+    <button id="lightbox-close" aria-label="Cerrar">✕</button>
+    <button id="lightbox-prev" aria-label="Anterior">‹</button>
+    <div id="lightbox-stage"><img id="lightbox-img" alt=""></div>
+    <button id="lightbox-next" aria-label="Siguiente">›</button>
+    <div id="lightbox-dots"></div>
   </div>
 
 <script>
@@ -624,9 +694,18 @@
       const pitchHtml = current.pitch ? `<p class="detail-pitch">${escapeHtml(current.pitch)}</p>` : '';
       const notesHtml = `<p class="detail-notes ${current.notes ? '' : 'empty'}">${current.notes ? escapeHtml(current.notes) : 'Sin notas todavía — editá para agregar contexto.'}</p>`;
       const galleryHtml = (current.gallery && current.gallery.length) ? `<div class="gallery-slider" id="detail-gallery"></div>` : '';
+      const media = [];
+      if(current.image) media.push(current.image);
+      if(current.gallery && current.gallery.length) media.push(...current.gallery);
       if(current.image){
         det.innerHTML = `
-          <div class="detail-hero"><h1 class="hero-title">${escapeHtml(current.title)}</h1></div>
+          <div class="detail-hero" id="detail-hero">
+            <div class="hero-blur-bg"></div>
+            <div class="hero-fg-img"></div>
+            <div class="hero-fade"></div>
+            <span class="hero-expand">⤢</span>
+            <h1 class="hero-title">${escapeHtml(current.title)}</h1>
+          </div>
           <div class="detail-row">
             <span class="pill pill-${current.status}">${statusLabel(current.status)}</span>
             <button class="icon-btn" id="detail-edit">✎</button>
@@ -643,14 +722,18 @@
       }
       boardEl.appendChild(det);
       if(current.image){
-        det.querySelector('.detail-hero').style.setProperty('--hero-img', `url("${current.image.replace(/"/g,'\\"')}")`);
+        const heroUrl = `url("${current.image.replace(/"/g,'\\"')}")`;
+        det.querySelector('.detail-hero').style.setProperty('--hero-img', heroUrl);
+        det.querySelector('#detail-hero').addEventListener('click', ()=> openLightbox(media, 0));
       }
       if(current.gallery && current.gallery.length){
         const gal = det.querySelector('#detail-gallery');
-        current.gallery.forEach(src=>{
+        const galleryOffset = current.image ? 1 : 0;
+        current.gallery.forEach((src, i)=>{
           const sl = document.createElement('div');
           sl.className = 'gallery-slide';
           sl.style.backgroundImage = `url("${src.replace(/"/g,'\\"')}")`;
+          sl.addEventListener('click', ()=> openLightbox(media, galleryOffset + i));
           gal.appendChild(sl);
         });
       }
@@ -1196,6 +1279,99 @@
     persist();
     render();
   });
+
+  // ---- Lightbox: ampliar imagen (hero o galería) con sliding infinito ----
+  const lightboxOverlay = document.getElementById('lightbox-overlay');
+  const lightboxEl = document.getElementById('lightbox');
+  const lightboxImgEl = document.getElementById('lightbox-img');
+  const lightboxDotsEl = document.getElementById('lightbox-dots');
+  const lightboxStageEl = document.getElementById('lightbox-stage');
+  const lightboxPrevBtn = document.getElementById('lightbox-prev');
+  const lightboxNextBtn = document.getElementById('lightbox-next');
+  let lbImages = [];
+  let lbIndex = 0;
+  let lbSuppressClickUntil = 0;
+
+  function openLightbox(images, index){
+    if(!images || !images.length) return;
+    lbImages = images;
+    lbIndex = ((index % images.length) + images.length) % images.length;
+    renderLightbox();
+    lightboxOverlay.classList.add('open');
+    lightboxEl.classList.add('open');
+  }
+  function closeLightbox(){
+    lightboxOverlay.classList.remove('open');
+    lightboxEl.classList.remove('open');
+  }
+  function renderLightbox(){
+    lightboxImgEl.style.transition = 'none';
+    lightboxImgEl.style.opacity = '0';
+    lightboxImgEl.style.transform = 'translateX(0)';
+    void lightboxImgEl.offsetWidth;
+    lightboxImgEl.style.transition = 'opacity 150ms ease, transform 200ms ease';
+    lightboxImgEl.src = lbImages[lbIndex];
+    lightboxImgEl.style.opacity = '1';
+    lightboxDotsEl.innerHTML = '';
+    const multi = lbImages.length > 1;
+    lightboxPrevBtn.style.display = multi ? 'flex' : 'none';
+    lightboxNextBtn.style.display = multi ? 'flex' : 'none';
+    if(multi){
+      lbImages.forEach((_, i)=>{
+        const d = document.createElement('span');
+        d.className = 'lightbox-dot' + (i === lbIndex ? ' active' : '');
+        lightboxDotsEl.appendChild(d);
+      });
+    }
+  }
+  // Wrap con módulo: al pasar la última vuelve a la primera y viceversa (infinito).
+  function lbShow(delta){
+    lbIndex = (lbIndex + delta + lbImages.length) % lbImages.length;
+    renderLightbox();
+  }
+  lightboxPrevBtn.addEventListener('click', (e)=>{ e.stopPropagation(); lbShow(-1); });
+  lightboxNextBtn.addEventListener('click', (e)=>{ e.stopPropagation(); lbShow(1); });
+  document.getElementById('lightbox-close').addEventListener('click', (e)=>{ e.stopPropagation(); closeLightbox(); });
+  lightboxEl.addEventListener('click', (e)=>{
+    if(Date.now() < lbSuppressClickUntil) return;
+    if(e.target === lightboxImgEl) return;
+    closeLightbox();
+  });
+  document.addEventListener('keydown', (e)=>{
+    if(!lightboxEl.classList.contains('open')) return;
+    if(e.key === 'Escape') closeLightbox();
+    else if(e.key === 'ArrowLeft') lbShow(-1);
+    else if(e.key === 'ArrowRight') lbShow(1);
+  });
+
+  // Deslizar con el dedo (o mouse) para pasar de imagen — con wrap infinito.
+  let lbDragging = false, lbDragStartX = 0, lbDragDX = 0, lbDragPointerId = null;
+  lightboxStageEl.addEventListener('pointerdown', (e)=>{
+    if(lbImages.length < 2) return;
+    lbDragging = true; lbDragStartX = e.clientX; lbDragDX = 0; lbDragPointerId = e.pointerId;
+    lightboxImgEl.style.transition = 'none';
+    try{ lightboxStageEl.setPointerCapture(e.pointerId); }catch(err){}
+  });
+  lightboxStageEl.addEventListener('pointermove', (e)=>{
+    if(!lbDragging || e.pointerId !== lbDragPointerId) return;
+    lbDragDX = e.clientX - lbDragStartX;
+    lightboxImgEl.style.transform = `translateX(${lbDragDX}px)`;
+  });
+  function lbEndDrag(e){
+    if(!lbDragging || (e && e.pointerId !== lbDragPointerId)) return;
+    lbDragging = false;
+    lightboxImgEl.style.transition = 'transform 200ms ease';
+    if(Math.abs(lbDragDX) > 60){
+      lbShow(lbDragDX < 0 ? 1 : -1);
+      lbSuppressClickUntil = Date.now() + 300;
+    } else {
+      lightboxImgEl.style.transform = 'translateX(0)';
+    }
+    lbDragDX = 0;
+  }
+  lightboxStageEl.addEventListener('pointerup', lbEndDrag);
+  lightboxStageEl.addEventListener('pointercancel', lbEndDrag);
+
 
   loadTree();
 })();
