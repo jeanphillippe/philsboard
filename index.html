@@ -52,17 +52,18 @@
 
   header#crumbbar{
     position:fixed; top:0; left:0; right:0; z-index:20;
-    display:flex; align-items:center; gap:6px;
+    display:flex; align-items:center;
     padding:calc(env(safe-area-inset-top,0px) + 10px) 42px 9px 9px;
     background:linear-gradient(var(--bg) 70%, transparent);
   }
   #back-btn{
-    flex:0 0 auto; width:32px; height:32px; border-radius:8px;
-    border:1px solid var(--line); background:var(--surface); color:var(--ink);
+    flex:0 0 auto; width:0; height:32px; border-radius:8px; overflow:hidden;
+    border:1px solid transparent; background:var(--surface); color:var(--ink);
     font-size:15px; display:flex; align-items:center; justify-content:center;
-    opacity:0; pointer-events:none; transition:opacity 150ms;
+    opacity:0; pointer-events:none; margin-right:0;
+    transition:opacity 150ms ease, width 180ms cubic-bezier(.2,.8,.3,1), margin-right 180ms cubic-bezier(.2,.8,.3,1), border-color 150ms ease;
   }
-  #back-btn.show{ opacity:1; pointer-events:auto; }
+  #back-btn.show{ opacity:1; pointer-events:auto; width:32px; margin-right:6px; border-color:var(--line); }
   #crumbs{
     flex:1 1 auto; display:flex; align-items:center; gap:5px;
     overflow-x:auto; scrollbar-width:none; white-space:nowrap;
@@ -229,8 +230,11 @@
     box-shadow:0 20px 38px rgba(0,0,0,.5); opacity:.94;
     transform:scale(1.045) rotate(-1.1deg);
     transition:transform 140ms ease, box-shadow 140ms ease;
-    animation:none;
+    animation:none; touch-action:none;
   }
+  /* Mientras se reordena una tarjeta, se bloquean los gestos nativos del navegador
+     (swipe-back, pull-to-refresh, pinch-zoom) para que no compitan con el arrastre. */
+  body.jp-dragging{ touch-action:none; overscroll-behavior:none; }
   .card-top{ display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; gap:6px; }
   .card-top-left{ display:flex; align-items:center; gap:5px; min-width:0; }
   .drag-handle{
@@ -270,19 +274,21 @@
   }
   #toast.show{ opacity:1; transform:translate(-50%,0); }
 
-  #sheet-overlay, #io-overlay, #bg-overlay, #about-overlay{
+  #sheet-overlay, #io-overlay, #bg-overlay, #about-overlay, #crop-overlay{
     position:fixed; inset:0; background:rgba(4,10,18,.55); z-index:29;
     opacity:0; pointer-events:none; transition:opacity 220ms;
   }
-  #sheet-overlay.open, #io-overlay.open, #bg-overlay.open, #about-overlay.open{ opacity:1; pointer-events:auto; }
-  #sheet, #io-sheet, #bg-sheet, #about-sheet{
+  #sheet-overlay.open, #io-overlay.open, #bg-overlay.open, #about-overlay.open, #crop-overlay.open{ opacity:1; pointer-events:auto; }
+  #sheet, #io-sheet, #bg-sheet, #about-sheet, #crop-sheet{
     position:fixed; left:0; right:0; bottom:0; z-index:30; max-height:88vh; overflow-y:auto;
     background:var(--surface-2); border:1px solid var(--line); border-bottom:none;
     border-radius:16px 16px 0 0; padding:14px 16px calc(env(safe-area-inset-bottom,0px) + 18px);
     transform:translateY(105%); transition:transform 260ms cubic-bezier(.22,.85,.32,1);
     box-shadow:0 -12px 32px rgba(0,0,0,.4);
   }
-  #sheet.open, #io-sheet.open, #bg-sheet.open, #about-sheet.open{ transform:translateY(0); }
+  #sheet.open, #io-sheet.open, #bg-sheet.open, #about-sheet.open, #crop-sheet.open{ transform:translateY(0); }
+  #crop-overlay{ z-index:33; }
+  #crop-sheet{ z-index:34; }
   #io-export-text, #io-import-text{ min-height:130px; font-family:var(--font-mono); font-size:11px; line-height:1.4; }
   .sheet-handle{ width:36px; height:4px; background:var(--line); border-radius:3px; margin:0 auto 12px; }
   .sheet-title{ font-family:var(--font-mono); font-size:14px; text-transform:uppercase; letter-spacing:.05em; margin:0 0 14px; color:var(--ink-dim); }
@@ -350,13 +356,26 @@
     .gallery-slider{ margin:10px -12px 2px; padding:0 12px 4px; }
   }
   @media (prefers-reduced-motion: reduce){
-    .board, #sheet, #sheet-overlay, #io-sheet, #io-overlay, #bg-sheet, #bg-overlay, #about-sheet, #about-overlay, #menu-pop, #lightbox, #lightbox-overlay{ transition-duration:1ms !important; }
+    .board, #sheet, #sheet-overlay, #io-sheet, #io-overlay, #bg-sheet, #bg-overlay, #about-sheet, #about-overlay, #crop-sheet, #crop-overlay, #menu-pop, #lightbox, #lightbox-overlay{ transition-duration:1ms !important; }
     .card{ animation:none !important; }
     .card.dragging{ transform:none; transition:none; }
   }
   @media (min-width:900px){
     #board-wrap{ max-width:1100px; margin:0 auto; }
   }
+
+  /* ---- Cropper: recorte + optimización de imágenes antes de guardarlas ---- */
+  #crop-frame{
+    position:relative; overflow:hidden; margin:4px auto 12px; border-radius:10px;
+    border:1px solid var(--line); background:#000; touch-action:none;
+    -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;
+  }
+  #crop-img{
+    position:absolute; left:0; top:0; max-width:none; max-height:none;
+    -webkit-user-select:none; user-select:none; -webkit-user-drag:none;
+  }
+  #crop-zoom{ width:100%; margin:0 0 12px; accent-color:var(--accent-2); }
+  .crop-chip.selected{ border-color:var(--accent-2); color:var(--accent-2); background:rgba(79,209,197,.08); }
 
   /* ---- Lightbox: ampliar imagen a pantalla completa con sliding infinito ---- */
   #lightbox-overlay{
@@ -464,7 +483,7 @@
       </div>
       <input type="file" id="f-image-file" accept="image/*" hidden>
       <div id="f-image-preview" class="image-preview"></div>
-      <p class="hint">Mejor un link liviano, las imágenes subidas quedan guardadas en el navegador y ocupan más espacio.</p>
+      <p class="hint">Al subir una imagen se abre un recorte rápido y se optimiza automáticamente. Igual, un link liviano ocupa menos espacio en el navegador.</p>
     </div>
     <div class="field">
       <label>Más imágenes (opcional)</label>
@@ -477,7 +496,7 @@
         <button type="button" class="chip-btn" id="f-gallery-pick">Subir imágenes</button>
       </div>
       <input type="file" id="f-gallery-file" accept="image/*" multiple hidden>
-      <p class="hint">Se muestran en un carrusel al abrir esta pieza, debajo de las notas.</p>
+      <p class="hint">Se muestran en un carrusel al abrir esta pieza, debajo de las notas. Las imágenes subidas se optimizan automáticamente.</p>
     </div>
     <div class="field">
       <label>Color</label>
@@ -542,6 +561,7 @@
       <div class="image-row">
         <button type="button" class="chip-btn" id="bg-image-pick">Subir imagen</button>
       </div>
+      <p class="hint">Al subir se abre un recorte rápido (recomendado panorámico) y se optimiza automáticamente.</p>
       <input type="file" id="bg-image-file" accept="image/*" hidden>
       <div id="bg-image-preview" class="image-preview"></div>
       <div class="field" style="margin-top:12px;">
@@ -576,6 +596,20 @@
     <div id="lightbox-stage"><img id="lightbox-img" alt=""></div>
     <button id="lightbox-next" aria-label="Siguiente">›</button>
     <div id="lightbox-dots"></div>
+  </div>
+
+  <div id="crop-overlay"></div>
+  <div id="crop-sheet">
+    <div class="sheet-handle"></div>
+    <p class="sheet-title" id="crop-title">Ajustar imagen</p>
+    <div id="crop-frame"><img id="crop-img" alt="" draggable="false"></div>
+    <input type="range" id="crop-zoom" min="1" max="4" step="0.01" value="1">
+    <div class="image-row" id="crop-aspects"></div>
+    <p class="hint">Arrastrá para mover, pellizcá o usá la barra para hacer zoom. Se optimiza automáticamente al aplicar.</p>
+    <div class="sheet-actions">
+      <button class="btn btn-ghost" id="crop-cancel">Cancelar</button>
+      <button class="btn btn-primary" id="crop-apply">Aplicar</button>
+    </div>
   </div>
 
 <script>
@@ -963,6 +997,7 @@
   // ---- Reordering (pointer-based drag) ----
   let dragCtx = null;
   function startDrag(card, e){
+    if(e.cancelable) e.preventDefault();
     const rect = card.getBoundingClientRect();
     const grid = card.parentElement;
     const placeholder = document.createElement('div');
@@ -988,15 +1023,20 @@
     card.style.pointerEvents = 'none';
     card.classList.add('dragging');
     document.body.appendChild(card);
+    document.body.classList.add('jp-dragging');
     packGrid(grid);
 
-    dragCtx = { card, placeholder, grid, offsetX, offsetY, moved:false, startX:e.clientX, startY:e.clientY, rafPending:false };
+    try{ card.setPointerCapture(e.pointerId); }catch(err){}
 
-    document.addEventListener('pointermove', onDragMove);
+    dragCtx = { card, placeholder, grid, offsetX, offsetY, moved:false, startX:e.clientX, startY:e.clientY, rafPending:false, pointerId:e.pointerId };
+
+    document.addEventListener('pointermove', onDragMove, { passive:false });
     document.addEventListener('pointerup', onDragEnd);
+    document.addEventListener('pointercancel', onDragEnd);
   }
   function onDragMove(e){
     if(!dragCtx) return;
+    if(e.cancelable) e.preventDefault();
     const { card, placeholder, grid, offsetX, offsetY } = dragCtx;
     const dx = e.clientX - dragCtx.startX, dy = e.clientY - dragCtx.startY;
     if(Math.abs(dx) + Math.abs(dy) > 6) dragCtx.moved = true;
@@ -1022,8 +1062,11 @@
   function onDragEnd(){
     document.removeEventListener('pointermove', onDragMove);
     document.removeEventListener('pointerup', onDragEnd);
+    document.removeEventListener('pointercancel', onDragEnd);
+    document.body.classList.remove('jp-dragging');
     if(!dragCtx) return;
-    const { card, placeholder, grid, moved } = dragCtx;
+    const { card, placeholder, grid, moved, pointerId } = dragCtx;
+    try{ card.releasePointerCapture(pointerId); }catch(err){}
     grid.insertBefore(card, placeholder);
     grid.removeChild(placeholder);
     card.style.position = ''; card.style.left = ''; card.style.top = '';
@@ -1112,6 +1155,225 @@
   }
   backBtn.addEventListener('click', navigateOut);
 
+  // ---- Cropper: recorte + optimización de imágenes antes de guardarlas ----
+  // Las imágenes subidas se procesan siempre acá antes de guardarse en el JSON:
+  // se recortan al encuadre elegido y se reescalan/comprimen a un máximo de
+  // 1920x1080, pensando en cómo se van a ver (tarjeta, portada, fondo).
+  const CROP_MAX_W = 1920, CROP_MAX_H = 1080;
+  const cropOverlay = document.getElementById('crop-overlay');
+  const cropSheetEl = document.getElementById('crop-sheet');
+  const cropTitleEl = document.getElementById('crop-title');
+  const cropFrameEl = document.getElementById('crop-frame');
+  const cropImgEl = document.getElementById('crop-img');
+  const cropAspectsEl = document.getElementById('crop-aspects');
+  const cropZoomEl = document.getElementById('crop-zoom');
+  const cropCancelBtn = document.getElementById('crop-cancel');
+  const cropApplyBtn = document.getElementById('crop-apply');
+
+  const ASPECT_PRESETS = [
+    { label:'Cuadrada', v:1 },
+    { label:'Vertical', v:3/4 },
+    { label:'Horizontal', v:4/3 },
+    { label:'Panorámica', v:16/9 },
+    { label:'Original', v:'auto' }
+  ];
+
+  let cropState = null;
+
+  function loadImageEl(src){
+    return new Promise((resolve, reject)=>{
+      const img = new Image();
+      img.onload = ()=> resolve(img);
+      img.onerror = reject;
+      img.src = src;
+    });
+  }
+  function computeOutputSize(srcW, srcH){
+    const scale = Math.min(CROP_MAX_W/srcW, CROP_MAX_H/srcH, 1);
+    return { w: Math.max(1, Math.round(srcW*scale)), h: Math.max(1, Math.round(srcH*scale)) };
+  }
+  function clampCropPan(){
+    const s = cropState;
+    const dispW = s.naturalW * s.scale, dispH = s.naturalH * s.scale;
+    const minTx = Math.min(0, s.frameW - dispW), minTy = Math.min(0, s.frameH - dispH);
+    s.tx = Math.max(minTx, Math.min(0, s.tx));
+    s.ty = Math.max(minTy, Math.min(0, s.ty));
+  }
+  function applyCropTransform(){
+    const s = cropState;
+    cropImgEl.style.width = (s.naturalW * s.scale) + 'px';
+    cropImgEl.style.height = (s.naturalH * s.scale) + 'px';
+    cropImgEl.style.left = s.tx + 'px';
+    cropImgEl.style.top = s.ty + 'px';
+  }
+  function setCropAspect(aspectVal){
+    const s = cropState;
+    const aspect = aspectVal === 'auto' ? (s.naturalW / s.naturalH) : aspectVal;
+    s.aspect = aspect;
+    const maxFrameW = Math.min(window.innerWidth * 0.86, 480);
+    const maxFrameH = Math.min(window.innerHeight * 0.5, 420);
+    let fw = maxFrameW, fh = fw / aspect;
+    if(fh > maxFrameH){ fh = maxFrameH; fw = fh * aspect; }
+    s.frameW = fw; s.frameH = fh;
+    cropFrameEl.style.width = fw + 'px';
+    cropFrameEl.style.height = fh + 'px';
+    s.minScale = Math.max(fw / s.naturalW, fh / s.naturalH);
+    s.maxScale = Math.max(s.minScale * 4, s.minScale + 0.01);
+    s.scale = Math.max(s.scale || s.minScale, s.minScale);
+    if(s.scale > s.maxScale) s.scale = s.maxScale;
+    s.tx = (fw - s.naturalW * s.scale) / 2;
+    s.ty = (fh - s.naturalH * s.scale) / 2;
+    clampCropPan();
+    cropZoomEl.min = s.minScale; cropZoomEl.max = s.maxScale;
+    cropZoomEl.step = (s.maxScale - s.minScale)/100 || 0.01;
+    cropZoomEl.value = s.scale;
+    applyCropTransform();
+    [...cropAspectsEl.children].forEach(ch=> ch.classList.toggle('selected', ch.dataset.v === String(aspectVal)));
+  }
+  function openCropper(src, initialAspect, title){
+    return loadImageEl(src).then(img=> new Promise((resolve, reject)=>{
+      cropState = { img, naturalW: img.naturalWidth, naturalH: img.naturalHeight, scale:0, tx:0, ty:0, aspect:1, resolve, reject };
+      cropTitleEl.textContent = title || 'Ajustar imagen';
+      cropImgEl.src = src;
+      cropAspectsEl.innerHTML = '';
+      ASPECT_PRESETS.forEach(p=>{
+        const b = document.createElement('button');
+        b.type = 'button'; b.className = 'chip-btn crop-chip'; b.textContent = p.label; b.dataset.v = String(p.v);
+        b.addEventListener('click', ()=> setCropAspect(p.v));
+        cropAspectsEl.appendChild(b);
+      });
+      setCropAspect(initialAspect === undefined ? 1 : initialAspect);
+      cropOverlay.classList.add('open');
+      cropSheetEl.classList.add('open');
+    }));
+  }
+  function closeCropper(){
+    cropOverlay.classList.remove('open');
+    cropSheetEl.classList.remove('open');
+    cropState = null;
+  }
+  cropZoomEl.addEventListener('input', ()=>{
+    if(!cropState) return;
+    const s = cropState;
+    const newScale = parseFloat(cropZoomEl.value);
+    const cx = s.frameW/2, cy = s.frameH/2;
+    const imgX = (cx - s.tx)/s.scale, imgY = (cy - s.ty)/s.scale;
+    s.scale = newScale;
+    s.tx = cx - imgX*newScale; s.ty = cy - imgY*newScale;
+    clampCropPan();
+    applyCropTransform();
+  });
+
+  // Arrastre (mover el encuadre) y pellizco de dos dedos (zoom) sobre el marco
+  const cropPointers = new Map();
+  let cropPanStart = null, cropPinchStart = null;
+  cropFrameEl.addEventListener('pointerdown', (e)=>{
+    if(!cropState) return;
+    try{ cropFrameEl.setPointerCapture(e.pointerId); }catch(err){}
+    cropPointers.set(e.pointerId, { x:e.clientX, y:e.clientY });
+    if(cropPointers.size === 1){
+      cropPanStart = { x:e.clientX, y:e.clientY, tx:cropState.tx, ty:cropState.ty };
+    } else if(cropPointers.size === 2){
+      const pts = [...cropPointers.values()];
+      cropPinchStart = { dist: Math.hypot(pts[0].x-pts[1].x, pts[0].y-pts[1].y), scale: cropState.scale };
+    }
+  });
+  cropFrameEl.addEventListener('pointermove', (e)=>{
+    if(!cropState || !cropPointers.has(e.pointerId)) return;
+    if(e.cancelable) e.preventDefault();
+    cropPointers.set(e.pointerId, { x:e.clientX, y:e.clientY });
+    const s = cropState;
+    if(cropPointers.size === 1 && cropPanStart){
+      s.tx = cropPanStart.tx + (e.clientX - cropPanStart.x);
+      s.ty = cropPanStart.ty + (e.clientY - cropPanStart.y);
+      clampCropPan();
+      applyCropTransform();
+    } else if(cropPointers.size === 2 && cropPinchStart){
+      const pts = [...cropPointers.values()];
+      const dist = Math.hypot(pts[0].x-pts[1].x, pts[0].y-pts[1].y);
+      let newScale = cropPinchStart.scale * (dist / cropPinchStart.dist);
+      newScale = Math.max(s.minScale, Math.min(s.maxScale, newScale));
+      const cx = s.frameW/2, cy = s.frameH/2;
+      const imgX = (cx - s.tx)/s.scale, imgY = (cy - s.ty)/s.scale;
+      s.scale = newScale;
+      s.tx = cx - imgX*newScale; s.ty = cy - imgY*newScale;
+      clampCropPan();
+      applyCropTransform();
+      cropZoomEl.value = s.scale;
+    }
+  }, { passive:false });
+  function cropPointerEnd(e){
+    cropPointers.delete(e.pointerId);
+    if(cropPointers.size < 2) cropPinchStart = null;
+    if(cropPointers.size === 1){
+      const [pt] = [...cropPointers.values()];
+      cropPanStart = { x: pt.x, y: pt.y, tx: cropState ? cropState.tx : 0, ty: cropState ? cropState.ty : 0 };
+    }
+    if(cropPointers.size === 0) cropPanStart = null;
+  }
+  cropFrameEl.addEventListener('pointerup', cropPointerEnd);
+  cropFrameEl.addEventListener('pointercancel', cropPointerEnd);
+  cropFrameEl.addEventListener('wheel', (e)=>{
+    if(!cropState) return;
+    e.preventDefault();
+    const s = cropState;
+    const factor = e.deltaY < 0 ? 1.08 : 0.93;
+    const newScale = Math.max(s.minScale, Math.min(s.maxScale, s.scale * factor));
+    const rect = cropFrameEl.getBoundingClientRect();
+    const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
+    const imgX = (cx - s.tx)/s.scale, imgY = (cy - s.ty)/s.scale;
+    s.scale = newScale;
+    s.tx = cx - imgX*newScale; s.ty = cy - imgY*newScale;
+    clampCropPan();
+    applyCropTransform();
+    cropZoomEl.value = s.scale;
+  }, { passive:false });
+
+  cropApplyBtn.addEventListener('click', ()=>{
+    if(!cropState) return;
+    const s = cropState;
+    const srcX = -s.tx / s.scale, srcY = -s.ty / s.scale;
+    const srcW = s.frameW / s.scale, srcH = s.frameH / s.scale;
+    const out = computeOutputSize(srcW, srcH);
+    const canvas = document.createElement('canvas');
+    canvas.width = out.w; canvas.height = out.h;
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(s.img, srcX, srcY, srcW, srcH, 0, 0, out.w, out.h);
+    let dataUrl = null;
+    try{ dataUrl = canvas.toDataURL('image/jpeg', 0.85); }catch(err){}
+    const resolve = s.resolve;
+    closeCropper();
+    if(dataUrl) resolve(dataUrl); else showToast('No se pudo procesar la imagen.');
+  });
+  cropCancelBtn.addEventListener('click', ()=>{
+    if(cropState){ const reject = cropState.reject; closeCropper(); reject(new Error('cancelled')); }
+    else closeCropper();
+  });
+  cropOverlay.addEventListener('click', ()=>{
+    if(cropState){ const reject = cropState.reject; closeCropper(); reject(new Error('cancelled')); }
+  });
+
+  // Optimización sin recorte manual (usada para subidas múltiples a la galería):
+  // reescala al máximo 1920x1080 conservando la proporción original y comprime.
+  function optimizeImageDataUrl(dataUrl){
+    return loadImageEl(dataUrl).then(img=>{
+      const out = computeOutputSize(img.naturalWidth, img.naturalHeight);
+      const canvas = document.createElement('canvas');
+      canvas.width = out.w; canvas.height = out.h;
+      const ctx = canvas.getContext('2d');
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(img, 0, 0, out.w, out.h);
+      try{ return canvas.toDataURL('image/jpeg', 0.85); }
+      catch(err){ return dataUrl; }
+    }).catch(()=> dataUrl);
+  }
+  function aspectForCardSize(size){
+    if(size === 'v') return 3/4;
+    if(size === 'h' || size === 'hh') return 16/9;
+    return 1;
+  }
+
   // ---- Sheet (create / edit) ----
   const sheetOverlay = document.getElementById('sheet-overlay');
   const sheetEl = document.getElementById('sheet');
@@ -1172,7 +1434,11 @@
     const file = fImageFile.files && fImageFile.files[0];
     if(!file) return;
     const reader = new FileReader();
-    reader.onload = ()=>{ selectedImage = reader.result; fImageUrl.value = ''; updateImagePreview(); };
+    reader.onload = ()=>{
+      openCropper(reader.result, aspectForCardSize(selectedSize), 'Ajustar imagen principal')
+        .then(cropped=>{ selectedImage = cropped; fImageUrl.value = ''; updateImagePreview(); })
+        .catch(()=>{});
+    };
     reader.readAsDataURL(file);
     fImageFile.value = '';
   });
@@ -1204,9 +1470,11 @@
     files.forEach(file=>{
       const reader = new FileReader();
       reader.onload = ()=>{
-        selectedGallery.push(reader.result);
-        pending--;
-        if(pending === 0) renderGalleryList();
+        optimizeImageDataUrl(reader.result).then(optimized=>{
+          selectedGallery.push(optimized);
+          pending--;
+          if(pending === 0) renderGalleryList();
+        });
       };
       reader.readAsDataURL(file);
     });
@@ -1418,7 +1686,11 @@
     const file = bgImageFile.files && bgImageFile.files[0];
     if(!file) return;
     const reader = new FileReader();
-    reader.onload = ()=>{ draftBg.bgImage = reader.result; bgImageUrl.value = ''; updateBgImagePreview(); };
+    reader.onload = ()=>{
+      openCropper(reader.result, 16/9, 'Ajustar imagen de fondo')
+        .then(cropped=>{ draftBg.bgImage = cropped; bgImageUrl.value = ''; updateBgImagePreview(); })
+        .catch(()=>{});
+    };
     reader.readAsDataURL(file);
     bgImageFile.value = '';
   });
