@@ -168,10 +168,13 @@
     border-top:4px solid var(--stripe,var(--accent));
     background:var(--surface); padding:9px 10px 8px;
     display:flex; flex-direction:column; cursor:pointer;
-    touch-action:manipulation; overflow:hidden;
+    touch-action:pan-y; overflow:hidden;
+    -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;
     animation:cardIn 260ms cubic-bezier(.2,.8,.3,1) both;
     animation-delay:var(--stagger,0ms);
+    transition:transform 160ms ease;
   }
+  .card.press-hold{ transform:scale(.96); }
   .card.has-image{
     background-image: linear-gradient(180deg, rgba(8,14,22,.18) 0%, rgba(8,14,22,.82) 100%), var(--bg-image);
     background-size:cover; background-position:center; color:#fff;
@@ -183,11 +186,14 @@
   .card.has-image .drag-handle, .card.has-image .edit-btn{ color:rgba(255,255,255,.85); }
   .card.has-image .edit-btn:active{ background:rgba(0,0,0,.35); border-color:rgba(255,255,255,.25); }
   .card.size-v{ grid-column:span 1; }
-  .card.size-h, .card.size-hh{ grid-row:span 1; padding:6px 8px 5px; }
-  .card.size-h .card-title, .card.size-hh .card-title{ font-size:11px; margin-bottom:2px; }
-  .card.size-h .card-note, .card.size-hh .card-note{ -webkit-line-clamp:1; }
-  .card.size-h .card-foot, .card.size-hh .card-foot{ display:none; }
-  .card.size-h .card-top, .card.size-hh .card-top{ margin-bottom:3px; }
+  /* "hh" (doble horizontal) ya no comparte la media-altura de "h": ahora es tan alta
+     como una tarjeta Completa, solo que el doble de ancha — así el título, la nota
+     completa y el footer quedan visibles sin recortarse. */
+  .card.size-h{ grid-row:span 1; padding:6px 8px 5px; }
+  .card.size-h .card-title{ font-size:11px; margin-bottom:2px; }
+  .card.size-h .card-note{ -webkit-line-clamp:1; }
+  .card.size-h .card-foot{ display:none; }
+  .card.size-h .card-top{ margin-bottom:3px; }
   .card.dragging{
     box-shadow:0 20px 38px rgba(0,0,0,.5); opacity:.94;
     transform:scale(1.045) rotate(-1.1deg);
@@ -301,7 +307,7 @@
     header#crumbbar{ padding-right:38px; }
     .grid{ margin:6px 10px 12px; }
     .card{ padding:7px 8px 6px; }
-    .card.size-h, .card.size-hh{ padding:5px 7px 4px; }
+    .card.size-h{ padding:5px 7px 4px; }
     .card-title{ font-size:11.5px; }
     .card-note{ font-size:11px; }
     .detail{ padding:8px 12px 8px; margin:0 12px 10px; }
@@ -371,7 +377,7 @@
         <div class="status-opt" data-v="h">Mitad horizontal</div>
         <div class="status-opt" data-v="hh">Doble horizontal</div>
       </div>
-      <p class="hint">Dos mitades del mismo tipo, una junto a la otra en la lista, se acomodan solas para ocupar 1 celda entre las dos.</p>
+      <p class="hint">Dos "Mitad horizontal" seguidas en la lista se acomodan solas para ocupar 1 celda entre las dos. "Doble horizontal" tiene la altura completa (como "Completa"), solo que el doble de ancha.</p>
     </div>
     <div class="field">
       <label for="f-image-url">Imagen principal — fondo (opcional)</label>
@@ -443,8 +449,7 @@
   "use strict";
   const PALETTE = ['#4FD1C5','#FF8A5C','#C9A5F2','#FFD166','#7FB3FF','#F27E9C','#9AE6B4','#F6AD55'];
   const STORAGE_KEY = 'idea-tree';
-  const hasClaudeStorage = (typeof window.storage !== 'undefined') && window.storage && typeof window.storage.get === 'function';
-  const SIZE_SPANS = { full:{w:2,h:2}, v:{w:1,h:2}, h:{w:2,h:1}, hh:{w:4,h:1} };
+  const SIZE_SPANS = { full:{w:2,h:2}, v:{w:1,h:2}, h:{w:2,h:1}, hh:{w:4,h:2} };
 
   function uid(){
     if(window.crypto && crypto.randomUUID) return crypto.randomUUID();
@@ -519,21 +524,10 @@
   }
 
   
-  async function storageGet(key){
-    if(hasClaudeStorage){
-      try{ const r = await window.storage.get(key, false); return (r && r.value) ? r.value : null; }
-      catch(e){ return null; }
-    }
+  function storageGet(key){
     try{ return localStorage.getItem(key); }catch(e){ return null; }
   }
-  async function storageSet(key, value){
-    if(hasClaudeStorage){
-      try{
-        const r = await window.storage.set(key, value, false);
-        if(!r) throw new Error('set failed');
-        return true;
-      }catch(e){ showToast('No se pudo guardar. Probá con una imagen más liviana o un link.'); return false; }
-    }
+  function storageSet(key, value){
     try{ localStorage.setItem(key, value); return true; }
     catch(e){ showToast('No se pudo guardar (espacio lleno). Probá con una imagen más liviana o un link.'); return false; }
   }
@@ -716,6 +710,7 @@
       e.preventDefault(); e.stopPropagation();
       startDrag(card, e);
     });
+    attachLongPress(card);
 
     card.addEventListener('click', ()=>{
       if(isAnimating) return;
@@ -723,6 +718,48 @@
       navigateInto(child, card);
     });
     return card;
+  }
+
+  // ---- Mantener apretado sobre la tarjeta (no solo el handle) para reordenar ----
+  // Pensado para tablet: no hace falta acertarle al ícono chico, alcanza con
+  // mantener el dedo quieto sobre el ítem. Si se mueve antes de tiempo, se
+  // interpreta como scroll normal de la página y se cancela.
+  const LONG_PRESS_MS = 420;
+  const LONG_PRESS_TOLERANCE = 8;
+  function attachLongPress(card){
+    let timer = null, downEvent = null, cancelled = false;
+    function cleanup(){
+      clearTimeout(timer); timer = null;
+      card.classList.remove('press-hold');
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onEnd);
+      document.removeEventListener('pointercancel', onEnd);
+    }
+    function onMove(e){
+      if(!downEvent || e.pointerId !== downEvent.pointerId) return;
+      const dx = e.clientX - downEvent.clientX, dy = e.clientY - downEvent.clientY;
+      if(Math.abs(dx) + Math.abs(dy) > LONG_PRESS_TOLERANCE){ cancelled = true; cleanup(); }
+    }
+    function onEnd(e){
+      if(!downEvent || e.pointerId !== downEvent.pointerId) return;
+      cancelled = true; cleanup();
+    }
+    card.addEventListener('pointerdown', (e)=>{
+      if(e.target.closest('.drag-handle') || e.target.closest('.edit-btn')) return;
+      if(dragCtx) return;
+      downEvent = e; cancelled = false;
+      card.classList.add('press-hold');
+      document.addEventListener('pointermove', onMove);
+      document.addEventListener('pointerup', onEnd);
+      document.addEventListener('pointercancel', onEnd);
+      timer = setTimeout(()=>{
+        if(cancelled || dragCtx){ cleanup(); return; }
+        cleanup();
+        if(navigator.vibrate){ try{ navigator.vibrate(12); }catch(err){} }
+        startDrag(card, downEvent);
+        suppressClickUntil = Date.now() + 500;
+      }, LONG_PRESS_MS);
+    });
   }
   function makeAddCard(index){
     const card = document.createElement('div');
