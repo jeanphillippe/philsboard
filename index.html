@@ -157,6 +157,45 @@
   .detail h1{ font-family:var(--font-mono); font-size:19px; margin:0; flex:1 1 auto; word-break:break-word; }
   .detail-pitch{ color:var(--ink); font-size:13.5px; font-style:italic; margin:7px 0 4px; }
   .detail-notes{ color:var(--ink-dim); font-size:13px; line-height:1.55; white-space:pre-wrap; margin:8px 0 0; }
+  .note-link{
+    color:var(--accent-2); text-decoration:underline; text-underline-offset:2px;
+    word-break:break-all; cursor:pointer;
+  }
+  .note-link:active{ opacity:.7; }
+  .yt-strip{ display:flex; gap:8px; flex-wrap:wrap; margin:10px 0 2px; }
+  .yt-thumb{
+    position:relative; width:136px; height:76px; border-radius:8px; cursor:pointer;
+    background-size:cover; background-position:center; background-color:#000;
+    border:1px solid var(--line);
+  }
+  .yt-thumb::after{
+    content:'▶'; position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    color:#fff; font-size:20px; text-shadow:0 1px 8px rgba(0,0,0,.85);
+    background:rgba(0,0,0,.18); border-radius:8px;
+  }
+  .yt-thumb:active{ transform:scale(.96); }
+
+  /* ---- Modal de video (YouTube embebido, sin salir de la página) ---- */
+  #video-overlay{
+    position:fixed; inset:0; background:rgba(4,8,14,.94); z-index:52;
+    opacity:0; pointer-events:none; transition:opacity 200ms;
+  }
+  #video-overlay.open{ opacity:1; pointer-events:auto; }
+  #video-modal{
+    position:fixed; inset:0; z-index:53; display:flex; align-items:center; justify-content:center;
+    opacity:0; pointer-events:none; transition:opacity 200ms;
+  }
+  #video-modal.open{ opacity:1; pointer-events:auto; }
+  #video-box{
+    width:min(96vw, 900px); aspect-ratio:16/9; background:#000; border-radius:8px; overflow:hidden;
+    border:1px solid var(--line); box-shadow:0 18px 44px rgba(0,0,0,.55);
+  }
+  #video-box iframe{ width:100%; height:100%; border:0; display:block; }
+  #video-close{
+    position:fixed; top:calc(env(safe-area-inset-top,0px) + 12px); right:12px; z-index:54;
+    width:36px; height:36px; border-radius:50%; border:1px solid var(--line);
+    background:var(--surface-2); color:var(--ink); font-size:15px;
+  }
   .icon-btn{
     flex:0 0 auto; width:30px; height:30px; border-radius:7px; border:1px solid var(--line);
     background:var(--surface); color:var(--ink-dim); font-size:13px;
@@ -417,7 +456,8 @@
   #lightbox.open{ opacity:1; pointer-events:auto; }
   #lightbox-stage{
     width:100%; height:100%; display:flex; align-items:center; justify-content:center;
-    padding:52px 58px; touch-action:pan-y;
+    padding:calc(env(safe-area-inset-top,0px) + 8px) 8px calc(env(safe-area-inset-bottom,0px) + 30px);
+    touch-action:pan-y;
   }
   #lightbox-img{
     max-width:100%; max-height:100%; object-fit:contain; border-radius:6px;
@@ -431,12 +471,12 @@
   }
   #lightbox-prev, #lightbox-next{
     position:fixed; top:50%; transform:translateY(-50%); z-index:51;
-    width:40px; height:40px; border-radius:50%; border:1px solid var(--line);
-    background:var(--surface-2); color:var(--ink); font-size:19px;
+    width:38px; height:38px; border-radius:50%; border:1px solid rgba(255,255,255,.2);
+    background:rgba(8,14,22,.45); color:#fff; font-size:19px;
     display:flex; align-items:center; justify-content:center;
   }
-  #lightbox-prev{ left:10px; }
-  #lightbox-next{ right:10px; }
+  #lightbox-prev{ left:6px; }
+  #lightbox-next{ right:6px; }
   #lightbox-dots{
     position:fixed; left:0; right:0; bottom:calc(env(safe-area-inset-bottom,0px) + 14px);
     display:flex; justify-content:center; gap:6px; z-index:51; pointer-events:none;
@@ -459,6 +499,7 @@
     <button id="menu-bg">🎨 Fondo del tablero</button>
     <button id="menu-export">⇪ Exportar datos</button>
     <button id="menu-import">⇩ Importar datos</button>
+    <button id="menu-optimize">🪶 Optimizar imágenes</button>
     <button id="menu-clear" class="danger">🗑 Vaciar tablero</button>
   </div>
   <div id="board-pop"></div>
@@ -621,6 +662,12 @@
     <div id="lightbox-dots"></div>
   </div>
 
+  <div id="video-overlay"></div>
+  <div id="video-modal">
+    <button id="video-close" aria-label="Cerrar">✕</button>
+    <div id="video-box"></div>
+  </div>
+
   <div id="crop-overlay"></div>
   <div id="crop-sheet">
     <div class="sheet-handle"></div>
@@ -717,6 +764,36 @@
 
   function escapeHtml(str){
     return (str||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  // ---- Links dentro de los textos ----
+  const URL_RE = /https?:\/\/[^\s<>"']+/g;
+  function ytIdFromUrl(u){
+    const m = u.match(/(?:youtube\.com\/(?:watch\?[^\s]*?v=|shorts\/|embed\/|live\/)|youtu\.be\/)([A-Za-z0-9_-]{6,15})/);
+    return m ? m[1] : null;
+  }
+  // Convierte URLs del texto (ya escapado) en links: los de YouTube abren el
+  // reproductor acá mismo; el resto abre en una pestaña aparte.
+  function linkifyHtml(text){
+    return escapeHtml(text).replace(URL_RE, (u)=>{
+      let raw = u.replace(/&amp;/g, '&');
+      const trail = raw.match(/[.,;:)\]]+$/);
+      let suffix = '';
+      if(trail){ suffix = escapeHtml(trail[0]); raw = raw.slice(0, -trail[0].length); }
+      const id = ytIdFromUrl(raw);
+      if(id) return `<a class="note-link yt-link" data-yt="${id}">▶ YouTube</a>` + suffix;
+      let label = raw.replace(/^https?:\/\//,'').replace(/\/$/,'');
+      if(label.length > 36) label = label.slice(0, 34) + '…';
+      return `<a href="${escapeHtml(raw)}" class="note-link" target="_blank" rel="noopener">${escapeHtml(label)}</a>` + suffix;
+    });
+  }
+  function collectYtIds(node){
+    const ids = [];
+    ((node.pitch || '') + '\n' + (node.notes || '')).replace(URL_RE, (u)=>{
+      const id = ytIdFromUrl(u);
+      if(id && ids.indexOf(id) === -1) ids.push(id);
+      return u;
+    });
+    return ids;
   }
   function statusLabel(s){ return s==='building' ? 'En desarrollo' : s==='live' ? 'Activo' : 'Idea'; }
   function nextFrame(fn){ requestAnimationFrame(()=>requestAnimationFrame(fn)); }
@@ -958,8 +1035,10 @@
     if(stack.length > 1){
       const det = document.createElement('div');
       det.className = 'detail';
-      const pitchHtml = current.pitch ? `<p class="detail-pitch">${escapeHtml(current.pitch)}</p>` : '';
-      const notesHtml = current.notes ? `<p class="detail-notes">${escapeHtml(current.notes)}</p>` : '';
+      const pitchHtml = current.pitch ? `<p class="detail-pitch">${linkifyHtml(current.pitch)}</p>` : '';
+      const notesHtml = current.notes ? `<p class="detail-notes">${linkifyHtml(current.notes)}</p>` : '';
+      const ytIds = collectYtIds(current);
+      const ytHtml = ytIds.length ? `<div class="yt-strip">${ytIds.map(id=>`<div class="yt-thumb" data-yt="${id}" style="background-image:url('https://i.ytimg.com/vi/${id}/hqdefault.jpg')"></div>`).join('')}</div>` : '';
       const galleryHtml = (current.gallery && current.gallery.length) ? `<div class="gallery-slider" id="detail-gallery"></div>` : '';
       const media = [];
       if(current.image) media.push(current.image);
@@ -977,7 +1056,7 @@
             <span class="pill pill-${current.status}">${statusLabel(current.status)}</span>
             <button class="icon-btn" id="detail-edit">✎</button>
           </div>
-          ${pitchHtml}${notesHtml}${galleryHtml}`;
+          ${pitchHtml}${notesHtml}${ytHtml}${galleryHtml}`;
       } else {
         det.innerHTML = `
           <div class="detail-top">
@@ -985,7 +1064,7 @@
             <button class="icon-btn" id="detail-edit">✎</button>
           </div>
           <span class="pill pill-${current.status}">${statusLabel(current.status)}</span>
-          ${pitchHtml}${notesHtml}${galleryHtml}`;
+          ${pitchHtml}${notesHtml}${ytHtml}${galleryHtml}`;
       }
       boardEl.appendChild(det);
       if(current.image){
@@ -1004,6 +1083,9 @@
           gal.appendChild(sl);
         });
       }
+      det.querySelectorAll('[data-yt]').forEach(el=>{
+        el.addEventListener('click', (e)=>{ e.preventDefault(); e.stopPropagation(); openVideo(el.dataset.yt); });
+      });
       det.querySelector('#detail-edit').addEventListener('click', ()=> openSheet('edit', current));
     }
 
@@ -1276,9 +1358,9 @@
   // Las imágenes subidas se procesan siempre acá antes de guardarse en el JSON:
   // se recortan al encuadre elegido y se reescalan/comprimen a un máximo de
   // 1920x1080, pensando en cómo se van a ver (tarjeta, portada, fondo).
-  // Tope por el lado MÁS LARGO (antes las verticales quedaban limitadas a 1080px
-  // de alto y se veían pixeladas). Nunca se agranda una imagen.
-  const IMG_MAX_SIDE = 1920;
+  // Tope por el lado MÁS LARGO. 1600px alcanza para verse nítido en cualquier
+  // pantalla de teléfono/tablet y pesa ~35% menos que 1920. Nunca se agranda.
+  const IMG_MAX_SIDE = 1600;
   const cropOverlay = document.getElementById('crop-overlay');
   const cropSheetEl = document.getElementById('crop-sheet');
   const cropTitleEl = document.getElementById('crop-title');
@@ -1348,7 +1430,7 @@
       }catch(e){ webpSupported = false; }
     }
     try{
-      return webpSupported ? canvas.toDataURL('image/webp', 0.82) : canvas.toDataURL('image/jpeg', 0.85);
+      return webpSupported ? canvas.toDataURL('image/webp', 0.72) : canvas.toDataURL('image/jpeg', 0.78);
     }catch(e){ return null; }
   }
   function clampCropPan(){
@@ -1927,6 +2009,36 @@
     menuPop.classList.remove('open');
     openIOSheet('import');
   });
+  // Recomprime todas las imágenes ya guardadas con los parámetros actuales
+  // (tope 1600px + WebP). Útil para bajar el peso de contenido cargado antes.
+  document.getElementById('menu-optimize').addEventListener('click', async ()=>{
+    menuPop.classList.remove('open');
+    showToast('Optimizando imágenes…');
+    syncActiveBoard();
+    const before = JSON.stringify({ boards }).length;
+    async function optNode(n){
+      if(n.image && n.image.startsWith('data:')) n.image = await optimizeImageDataUrl(n.image);
+      if(Array.isArray(n.gallery)){
+        for(let i=0; i<n.gallery.length; i++){
+          if(n.gallery[i].startsWith('data:')) n.gallery[i] = await optimizeImageDataUrl(n.gallery[i]);
+        }
+      }
+      for(const c of n.children) await optNode(c);
+    }
+    for(const b of boards){
+      await optNode(b.tree);
+      if(b.settings.bgImage && b.settings.bgImage.startsWith('data:')){
+        b.settings.bgImage = await optimizeImageDataUrl(b.settings.bgImage);
+      }
+    }
+    const after = JSON.stringify({ boards }).length;
+    applyBackground();
+    persist();
+    render();
+    const mb = x=> (x/1048576).toFixed(2).replace('.', ',');
+    showToast('Listo: ' + mb(before) + ' MB → ' + mb(after) + ' MB.');
+  });
+
   document.getElementById('menu-clear').addEventListener('click', ()=>{
     menuPop.classList.remove('open');
     if(!confirm('Esto vacía el tablero actual. ¿Continuar?')) return;
@@ -1938,6 +2050,27 @@
     stack = [tree];
     persist();
     render();
+  });
+
+  // ---- Modal de video: YouTube embebido sin salir de la página ----
+  const videoOverlay = document.getElementById('video-overlay');
+  const videoModal = document.getElementById('video-modal');
+  const videoBox = document.getElementById('video-box');
+  function openVideo(id){
+    if(!/^[A-Za-z0-9_-]{6,15}$/.test(id || '')) return;
+    videoBox.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${id}?autoplay=1&playsinline=1&rel=0" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowfullscreen></iframe>`;
+    videoOverlay.classList.add('open');
+    videoModal.classList.add('open');
+  }
+  function closeVideo(){
+    videoOverlay.classList.remove('open');
+    videoModal.classList.remove('open');
+    videoBox.innerHTML = '';
+  }
+  document.getElementById('video-close').addEventListener('click', closeVideo);
+  videoModal.addEventListener('click', (e)=>{ if(!videoBox.contains(e.target)) closeVideo(); });
+  document.addEventListener('keydown', (e)=>{
+    if(e.key === 'Escape' && videoModal.classList.contains('open')) closeVideo();
   });
 
   // ---- Lightbox: ampliar imagen (hero o galería) con sliding infinito ----
