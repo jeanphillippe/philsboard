@@ -98,6 +98,33 @@
   #menu-pop button:active{ background:var(--surface); }
   #menu-pop button.danger{ color:#F27E9C; }
 
+  /* ---- Selector de tableros (se abre tocando el nombre del tablero) ---- */
+  #board-pop{
+    position:fixed; top:calc(env(safe-area-inset-top,0px) + 43px); left:7px; z-index:22;
+    background:var(--surface-2); border:1px solid var(--line); border-radius:10px;
+    padding:6px; display:flex; flex-direction:column; min-width:190px; max-width:82vw;
+    box-shadow:0 12px 28px rgba(0,0,0,.4); transform-origin:top left;
+    opacity:0; transform:translateY(-6px) scale(.96); pointer-events:none;
+    transition:opacity 160ms ease, transform 160ms cubic-bezier(.2,.9,.3,1.2);
+  }
+  #board-pop.open{ opacity:1; transform:none; pointer-events:auto; }
+  .board-row{ display:flex; align-items:center; }
+  .board-row .bname{
+    flex:1 1 auto; background:none; border:none; color:var(--ink); font-family:var(--font-mono);
+    font-size:11.5px; text-transform:uppercase; letter-spacing:.03em; text-align:left;
+    padding:9px 10px; border-radius:6px; cursor:pointer;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:70vw;
+  }
+  .board-row .bname:active{ background:var(--surface); }
+  .board-row.active .bname{ color:var(--accent-2); }
+  .board-row .bdel{
+    flex:0 0 auto; width:26px; height:26px; border:none; background:none; color:var(--ink-faint);
+    font-size:11px; border-radius:6px; cursor:pointer; padding:0;
+  }
+  .board-row .bdel:active{ color:#F27E9C; }
+  .board-row.badd .bname{ color:var(--accent); }
+  .crumb-caret{ font-size:8px; color:var(--ink-faint); margin-left:3px; }
+
   #about-btn{
     position:fixed; bottom:calc(env(safe-area-inset-bottom,0px) + 10px); left:10px; z-index:21;
     width:26px; height:26px; border-radius:50%; border:1px solid var(--line);
@@ -432,8 +459,9 @@
     <button id="menu-bg">🎨 Fondo del tablero</button>
     <button id="menu-export">⇪ Exportar datos</button>
     <button id="menu-import">⇩ Importar datos</button>
-    <button id="menu-clear" class="danger">🗑 Vaciar todo</button>
+    <button id="menu-clear" class="danger">🗑 Vaciar tablero</button>
   </div>
+  <div id="board-pop"></div>
   <button id="about-btn" aria-label="Acerca de">?</button>
 
   <main id="board-wrap"><div id="board" class="board"></div></main>
@@ -454,7 +482,6 @@
     <div class="field">
       <label for="f-notes">Notas</label>
       <textarea id="f-notes" maxlength="2000" placeholder="Un renglón por línea, como en la pizarra"></textarea>
-      <p class="hint">Se muestra tal cual la escribas, renglón por renglón.</p>
     </div>
     <div class="field">
       <label>Estado</label>
@@ -472,7 +499,6 @@
         <div class="status-opt" data-v="h">Mitad horizontal</div>
         <div class="status-opt" data-v="hh">Doble horizontal</div>
       </div>
-      <p class="hint">Dos "Mitad horizontal" seguidas en la lista se acomodan solas para ocupar 1 celda entre las dos. "Doble horizontal" tiene la altura completa (como "Completa"), solo que el doble de ancha.</p>
     </div>
     <div class="field">
       <label for="f-image-url">Imagen principal, fondo (opcional)</label>
@@ -483,7 +509,6 @@
       </div>
       <input type="file" id="f-image-file" accept="image/*" hidden>
       <div id="f-image-preview" class="image-preview"></div>
-      <p class="hint">Al subir una imagen se abre un recorte rápido y se optimiza automáticamente. Igual, un link liviano ocupa menos espacio en el navegador.</p>
     </div>
     <div class="field">
       <label>Más imágenes (opcional)</label>
@@ -496,7 +521,6 @@
         <button type="button" class="chip-btn" id="f-gallery-pick">Subir imágenes</button>
       </div>
       <input type="file" id="f-gallery-file" accept="image/*" multiple hidden>
-      <p class="hint">Se muestran en un carrusel al abrir esta pieza, debajo de las notas. Las imágenes subidas se optimizan automáticamente.</p>
     </div>
     <div class="field">
       <label>Color</label>
@@ -515,22 +539,21 @@
     <p class="sheet-title" id="io-title">Exportar</p>
 
     <div id="io-export-view">
-      <p class="hint" style="margin:0 0 10px;">Copiá este texto o descargalo como archivo para pasarlo a otro dispositivo. Incluye tus piezas y el fondo elegido.</p>
+      <p class="hint" style="margin:0 0 10px;">Incluye todos tus tableros. Guardá el archivo donde quieras (por ejemplo, Google Drive).</p>
       <div class="field"><textarea id="io-export-text" readonly></textarea></div>
       <div class="image-row">
         <button type="button" class="chip-btn" id="io-copy">Copiar</button>
-        <button type="button" class="chip-btn" id="io-download">Descargar archivo</button>
+        <button type="button" class="chip-btn" id="io-download">Descargar</button>
+        <button type="button" class="chip-btn" id="io-share" style="display:none;">Compartir…</button>
       </div>
     </div>
 
     <div id="io-import-view" style="display:none;">
-      <p class="hint" style="margin:0 0 10px;">Pegá el texto exportado, o elegí el archivo descargado en este dispositivo.</p>
       <div class="field"><textarea id="io-import-text" placeholder="Pegá acá el texto exportado…"></textarea></div>
       <div class="image-row">
         <button type="button" class="chip-btn" id="io-pick-file">Elegir archivo</button>
         <input type="file" id="io-file" accept="application/json,.json" hidden>
       </div>
-      <p class="hint" style="color:#F27E9C;">Esto reemplaza todo lo que tenés cargado ahora en este dispositivo.</p>
     </div>
 
     <div class="sheet-actions">
@@ -605,7 +628,7 @@
     <div id="crop-frame"><img id="crop-img" alt="" draggable="false"></div>
     <input type="range" id="crop-zoom" min="1" max="4" step="0.01" value="1">
     <div class="image-row" id="crop-aspects"></div>
-    <p class="hint">Arrastrá para mover, pellizcá o usá la barra para hacer zoom. Se optimiza automáticamente al aplicar.</p>
+    <p class="hint">Arrastrá para mover · pellizcá para zoom</p>
     <div class="sheet-actions">
       <button class="btn btn-ghost" id="crop-cancel">Cancelar</button>
       <button class="btn btn-primary" id="crop-apply">Aplicar</button>
@@ -667,6 +690,8 @@
     return node({ title:"PHIL'S BORD" });
   }
 
+  let boards = [];
+  let activeBoardIdx = 0;
   let tree = null;
   let stack = [];
   let appSettings = Object.assign({}, DEFAULT_SETTINGS);
@@ -728,31 +753,53 @@
     }
   }
 
-  async function loadTree(){
-    const raw = await storageGet(STORAGE_KEY);
-    let parsedTree = null, parsedSettings = null, hadData = false;
-    if(raw){
-      try{
-        const parsed = JSON.parse(raw);
-        if(parsed && typeof parsed === 'object' && parsed.tree){
-          parsedTree = parsed.tree;
-          parsedSettings = parsed.settings;
-        } else {
-          parsedTree = parsed;
-        }
-        hadData = true;
-      }catch(e){ parsedTree = null; }
-    }
-    tree = hadData ? (normalizeNode(parsedTree) || seedTree()) : seedTree();
-    appSettings = normalizeSettings(parsedSettings);
+  function normalizeBoard(b){
+    return {
+      id: (b && typeof b.id === 'string' && b.id) ? b.id : uid(),
+      tree: normalizeNode(b && b.tree) || seedTree(),
+      settings: normalizeSettings(b && b.settings)
+    };
+  }
+  function syncActiveBoard(){
+    if(!boards[activeBoardIdx]) return;
+    boards[activeBoardIdx].tree = tree;
+    boards[activeBoardIdx].settings = appSettings;
+  }
+  function activateBoard(idx){
+    activeBoardIdx = Math.min(Math.max(idx, 0), boards.length - 1);
+    tree = boards[activeBoardIdx].tree;
+    appSettings = boards[activeBoardIdx].settings;
+    document.title = tree.title || "PHIL'S BORD";
     applyBackground();
-    if(!hadData) persist();
     stack = [tree];
     render();
   }
+  function loadTree(){
+    const raw = storageGet(STORAGE_KEY);
+    let parsed = null;
+    if(raw){ try{ parsed = JSON.parse(raw); }catch(e){ parsed = null; } }
+    if(parsed && Array.isArray(parsed.boards) && parsed.boards.length){
+      boards = parsed.boards.map(normalizeBoard);
+      activeBoardIdx = parseInt(parsed.active, 10) || 0;
+    } else if(parsed){
+      // formato anterior: un solo tablero
+      const t = (typeof parsed === 'object' && parsed.tree) ? parsed.tree : parsed;
+      const s = (typeof parsed === 'object' && parsed.settings) ? parsed.settings : null;
+      boards = [normalizeBoard({ tree: t, settings: s })];
+      activeBoardIdx = 0;
+    } else {
+      boards = [normalizeBoard(null)];
+      activeBoardIdx = 0;
+    }
+    activateBoard(activeBoardIdx);
+    if(!parsed) persist();
+  }
   function persist(){
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(()=>{ storageSet(STORAGE_KEY, JSON.stringify({ tree, settings: appSettings })); }, 350);
+    saveTimer = setTimeout(()=>{
+      syncActiveBoard();
+      storageSet(STORAGE_KEY, JSON.stringify({ boards, active: activeBoardIdx }));
+    }, 350);
   }
 
   // ---- Grid packer: explicit placement so half-height ("h"/"hh") pairs stack correctly ----
@@ -818,11 +865,17 @@
       const b = document.createElement('button');
       b.className = 'crumb' + (i===stack.length-1 ? ' current' : '');
       b.textContent = n.title;
+      if(i === 0){
+        const caret = document.createElement('span');
+        caret.className = 'crumb-caret';
+        caret.textContent = '▾';
+        b.appendChild(caret);
+        b.addEventListener('dblclick', (e)=>{ e.stopPropagation(); renameRoot(); });
+      }
       if(i !== stack.length-1){
         b.addEventListener('click', ()=>{ if(!isAnimating) jumpTo(i); });
-      }
-      if(i === 0){
-        b.addEventListener('dblclick', (e)=>{ e.stopPropagation(); renameRoot(); });
+      } else if(i === 0){
+        b.addEventListener('click', (e)=>{ e.stopPropagation(); toggleBoardPop(); });
       }
       crumbsEl.appendChild(b);
     });
@@ -834,6 +887,70 @@
     document.title = current;
     persist();
     render();
+  }
+
+  // ---- Selector de tableros ----
+  const boardPop = document.getElementById('board-pop');
+  function renderBoardPop(){
+    boardPop.innerHTML = '';
+    boards.forEach((b, i)=>{
+      const row = document.createElement('div');
+      row.className = 'board-row' + (i === activeBoardIdx ? ' active' : '');
+      const name = document.createElement('button');
+      name.className = 'bname';
+      name.textContent = (b.tree && b.tree.title) || 'Tablero';
+      name.addEventListener('click', ()=>{
+        boardPop.classList.remove('open');
+        if(i !== activeBoardIdx){
+          syncActiveBoard();
+          activateBoard(i);
+          persist();
+        }
+      });
+      row.appendChild(name);
+      if(boards.length > 1){
+        const del = document.createElement('button');
+        del.className = 'bdel';
+        del.textContent = '✕';
+        del.setAttribute('aria-label', 'Eliminar tablero');
+        del.addEventListener('click', (e)=>{
+          e.stopPropagation();
+          if(!confirm('¿Eliminar el tablero "' + ((b.tree && b.tree.title) || '') + '" y todo su contenido?')) return;
+          boards.splice(i, 1);
+          if(i === activeBoardIdx){
+            activateBoard(Math.min(i, boards.length - 1));
+          } else if(i < activeBoardIdx){
+            activeBoardIdx--;
+          }
+          persist();
+          renderBoardPop();
+        });
+        row.appendChild(del);
+      }
+      boardPop.appendChild(row);
+    });
+    const addRow = document.createElement('div');
+    addRow.className = 'board-row badd';
+    const addBtn = document.createElement('button');
+    addBtn.className = 'bname';
+    addBtn.textContent = '+ Nuevo';
+    addBtn.addEventListener('click', ()=>{
+      const name = (prompt('Nombre del nuevo tablero:') || '').trim();
+      if(!name) return;
+      syncActiveBoard();
+      boards.push({ id: uid(), tree: node({ title: name }), settings: normalizeSettings(null) });
+      boardPop.classList.remove('open');
+      activateBoard(boards.length - 1);
+      persist();
+    });
+    addRow.appendChild(addBtn);
+    boardPop.appendChild(addRow);
+  }
+  function toggleBoardPop(){
+    if(boardPop.classList.contains('open')){ boardPop.classList.remove('open'); return; }
+    renderBoardPop();
+    menuPop.classList.remove('open');
+    boardPop.classList.add('open');
   }
   function renderBoardContent(){
     boardEl.innerHTML = '';
@@ -1159,7 +1276,9 @@
   // Las imágenes subidas se procesan siempre acá antes de guardarse en el JSON:
   // se recortan al encuadre elegido y se reescalan/comprimen a un máximo de
   // 1920x1080, pensando en cómo se van a ver (tarjeta, portada, fondo).
-  const CROP_MAX_W = 1920, CROP_MAX_H = 1080;
+  // Tope por el lado MÁS LARGO (antes las verticales quedaban limitadas a 1080px
+  // de alto y se veían pixeladas). Nunca se agranda una imagen.
+  const IMG_MAX_SIDE = 1920;
   const cropOverlay = document.getElementById('crop-overlay');
   const cropSheetEl = document.getElementById('crop-sheet');
   const cropTitleEl = document.getElementById('crop-title');
@@ -1189,8 +1308,48 @@
     });
   }
   function computeOutputSize(srcW, srcH){
-    const scale = Math.min(CROP_MAX_W/srcW, CROP_MAX_H/srcH, 1);
+    const scale = Math.min(IMG_MAX_SIDE / Math.max(srcW, srcH), 1);
     return { w: Math.max(1, Math.round(srcW*scale)), h: Math.max(1, Math.round(srcH*scale)) };
+  }
+  // Reducción por pasos (mitades sucesivas): evita el aliasing/pixelado que produce
+  // reducir de una sola vez en navegadores que ignoran imageSmoothingQuality (Safari).
+  function drawScaled(img, sx, sy, sw, sh, outW, outH){
+    let cw = Math.max(1, Math.round(sw)), ch = Math.max(1, Math.round(sh));
+    let cur = document.createElement('canvas');
+    cur.width = cw; cur.height = ch;
+    let ctx = cur.getContext('2d');
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, cw, ch);
+    while(cw / 2 >= outW && ch / 2 >= outH){
+      cw = Math.round(cw / 2); ch = Math.round(ch / 2);
+      const next = document.createElement('canvas');
+      next.width = cw; next.height = ch;
+      const nctx = next.getContext('2d');
+      nctx.imageSmoothingQuality = 'high';
+      nctx.drawImage(cur, 0, 0, cw, ch);
+      cur = next;
+    }
+    if(cw === outW && ch === outH) return cur;
+    const out = document.createElement('canvas');
+    out.width = outW; out.height = outH;
+    const octx = out.getContext('2d');
+    octx.imageSmoothingQuality = 'high';
+    octx.drawImage(cur, 0, 0, outW, outH);
+    return out;
+  }
+  // WebP si el navegador lo soporta (~30% más liviano a igual calidad); si no, JPEG.
+  let webpSupported = null;
+  function bestDataUrl(canvas){
+    if(webpSupported === null){
+      try{
+        const probe = document.createElement('canvas');
+        probe.width = 2; probe.height = 2;
+        webpSupported = probe.toDataURL('image/webp').indexOf('data:image/webp') === 0;
+      }catch(e){ webpSupported = false; }
+    }
+    try{
+      return webpSupported ? canvas.toDataURL('image/webp', 0.82) : canvas.toDataURL('image/jpeg', 0.85);
+    }catch(e){ return null; }
   }
   function clampCropPan(){
     const s = cropState;
@@ -1335,13 +1494,8 @@
     const srcX = -s.tx / s.scale, srcY = -s.ty / s.scale;
     const srcW = s.frameW / s.scale, srcH = s.frameH / s.scale;
     const out = computeOutputSize(srcW, srcH);
-    const canvas = document.createElement('canvas');
-    canvas.width = out.w; canvas.height = out.h;
-    const ctx = canvas.getContext('2d');
-    ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(s.img, srcX, srcY, srcW, srcH, 0, 0, out.w, out.h);
     let dataUrl = null;
-    try{ dataUrl = canvas.toDataURL('image/jpeg', 0.85); }catch(err){}
+    try{ dataUrl = bestDataUrl(drawScaled(s.img, srcX, srcY, srcW, srcH, out.w, out.h)); }catch(err){}
     const resolve = s.resolve;
     closeCropper();
     if(dataUrl) resolve(dataUrl); else showToast('No se pudo procesar la imagen.');
@@ -1359,13 +1513,7 @@
   function optimizeImageDataUrl(dataUrl){
     return loadImageEl(dataUrl).then(img=>{
       const out = computeOutputSize(img.naturalWidth, img.naturalHeight);
-      const canvas = document.createElement('canvas');
-      canvas.width = out.w; canvas.height = out.h;
-      const ctx = canvas.getContext('2d');
-      ctx.imageSmoothingQuality = 'high';
-      ctx.drawImage(img, 0, 0, out.w, out.h);
-      try{ return canvas.toDataURL('image/jpeg', 0.85); }
-      catch(err){ return dataUrl; }
+      return bestDataUrl(drawScaled(img, 0, 0, img.naturalWidth, img.naturalHeight, out.w, out.h)) || dataUrl;
     }).catch(()=> dataUrl);
   }
   function aspectForCardSize(size){
@@ -1570,8 +1718,12 @@
     ioExportView.style.display = mode === 'export' ? 'block' : 'none';
     ioImportView.style.display = mode === 'import' ? 'block' : 'none';
     ioImportBtn.style.display = mode === 'import' ? 'block' : 'none';
-    if(mode === 'export') ioExportText.value = JSON.stringify({ tree, settings: appSettings }, null, 2);
-    else ioImportText.value = '';
+    if(mode === 'export'){
+      syncActiveBoard();
+      ioExportText.value = JSON.stringify({ app:'phils-bord', boards, active: activeBoardIdx }, null, 2);
+    } else {
+      ioImportText.value = '';
+    }
     ioOverlay.classList.add('open');
     ioSheetEl.classList.add('open');
   }
@@ -1596,15 +1748,35 @@
       catch(e2){ showToast('No se pudo copiar, seleccioná el texto y copiá a mano.'); }
     }
   });
+  function exportFileName(){
+    const d = new Date(), p = n=> String(n).padStart(2,'0');
+    return `phils-bord_${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}_${p(d.getHours())}-${p(d.getMinutes())}.json`;
+  }
   document.getElementById('io-download').addEventListener('click', ()=>{
     try{
       const blob = new Blob([ioExportText.value], { type:'application/json' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url; a.download = 'phils-bord.json';
+      a.href = url; a.download = exportFileName();
       document.body.appendChild(a); a.click(); a.remove();
       setTimeout(()=> URL.revokeObjectURL(url), 1000);
     }catch(e){ showToast('No se pudo descargar el archivo.'); }
+  });
+  // "Compartir…" abre la hoja nativa del sistema: desde ahí se puede guardar
+  // directo en Google Drive, mandarlo por mail, etc. Solo aparece si el
+  // navegador soporta compartir archivos (celulares, principalmente).
+  const ioShareBtn = document.getElementById('io-share');
+  try{
+    if(navigator.canShare && navigator.canShare({ files:[new File(['x'], 'x.json', { type:'application/json' })] })){
+      ioShareBtn.style.display = '';
+    }
+  }catch(e){}
+  ioShareBtn.addEventListener('click', async ()=>{
+    try{
+      const name = exportFileName();
+      const file = new File([ioExportText.value], name, { type:'application/json' });
+      await navigator.share({ files:[file], title: name });
+    }catch(e){ /* cancelado por el usuario */ }
   });
   document.getElementById('io-pick-file').addEventListener('click', ()=> ioFileInput.click());
   ioFileInput.addEventListener('change', ()=>{
@@ -1621,23 +1793,29 @@
     let parsedRaw;
     try{ parsedRaw = JSON.parse(raw); }
     catch(e){ showToast('Ese texto no es un JSON válido.'); return; }
-    let importedTree = parsedRaw, importedSettings = null;
-    if(parsedRaw && typeof parsedRaw === 'object' && parsedRaw.tree){
-      importedTree = parsedRaw.tree;
-      importedSettings = parsedRaw.settings;
+    if(parsedRaw && Array.isArray(parsedRaw.boards) && parsedRaw.boards.length){
+      // Formato nuevo: reemplaza todos los tableros
+      if(!confirm('Esto reemplaza todos tus tableros en este dispositivo. ¿Continuar?')) return;
+      boards = parsedRaw.boards.map(normalizeBoard);
+      activateBoard(parseInt(parsedRaw.active, 10) || 0);
+    } else {
+      // Formato anterior (un solo tablero): reemplaza solo el tablero actual
+      let importedTree = parsedRaw, importedSettings = null;
+      if(parsedRaw && typeof parsedRaw === 'object' && parsedRaw.tree){
+        importedTree = parsedRaw.tree;
+        importedSettings = parsedRaw.settings;
+      }
+      const normalized = normalizeNode(importedTree);
+      if(!normalized){ showToast('El archivo no tiene el formato esperado.'); return; }
+      if(!confirm('Esto reemplaza el tablero actual. ¿Continuar?')) return;
+      boards[activeBoardIdx] = {
+        id: boards[activeBoardIdx].id,
+        tree: normalized,
+        settings: importedSettings ? normalizeSettings(importedSettings) : appSettings
+      };
+      activateBoard(activeBoardIdx);
     }
-    const normalized = normalizeNode(importedTree);
-    if(!normalized){ showToast('El archivo no tiene el formato esperado.'); return; }
-    if(!confirm('Esto reemplaza todo lo que tenés cargado ahora en este dispositivo. ¿Continuar?')) return;
-    tree = normalized;
-    document.title = tree.title || "PHIL'S BORD";
-    if(importedSettings){
-      appSettings = normalizeSettings(importedSettings);
-      applyBackground();
-    }
-    stack = [tree];
     persist();
-    render();
     closeIOSheet();
     showToast('Importado.');
   });
@@ -1735,6 +1913,7 @@
   menuBtn.addEventListener('click', ()=> menuPop.classList.toggle('open'));
   document.addEventListener('click', (e)=>{
     if(!menuPop.contains(e.target) && e.target !== menuBtn) menuPop.classList.remove('open');
+    if(!boardPop.contains(e.target)) boardPop.classList.remove('open');
   });
   document.getElementById('menu-bg').addEventListener('click', ()=>{
     menuPop.classList.remove('open');
@@ -1750,10 +1929,11 @@
   });
   document.getElementById('menu-clear').addEventListener('click', ()=>{
     menuPop.classList.remove('open');
-    if(!confirm('Esto borra todo. ¿Continuar?')) return;
-    tree = node({ title:"PHIL'S BORD" });
-    document.title = "PHIL'S BORD";
+    if(!confirm('Esto vacía el tablero actual. ¿Continuar?')) return;
+    tree = node({ title: tree.title || "PHIL'S BORD" });
     appSettings = Object.assign({}, DEFAULT_SETTINGS);
+    boards[activeBoardIdx].tree = tree;
+    boards[activeBoardIdx].settings = appSettings;
     applyBackground();
     stack = [tree];
     persist();
