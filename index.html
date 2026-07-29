@@ -665,7 +665,9 @@
       <div class="field"><textarea id="io-import-text" placeholder="Pegá acá el texto exportado…"></textarea></div>
       <div class="image-row">
         <button type="button" class="chip-btn" id="io-pick-file">Elegir archivo (.brd o .json)</button>
-        <input type="file" id="io-file" accept=".brd,.json,application/json" hidden>
+        <!-- Sin "accept": iOS/Android no conocen la extensión .brd y grisan el archivo en el
+             selector. Cualquier archivo se puede elegir y se valida al leerlo. -->
+        <input type="file" id="io-file" hidden>
       </div>
     </div>
 
@@ -2157,7 +2159,12 @@
     const reader = new FileReader();
     reader.onload = async ()=>{
       const bytes = new Uint8Array(reader.result);
-      if(!isBrdFile(bytes)){ ioImportText.value = _dec.decode(bytes); return; }
+      if(!isBrdFile(bytes)){
+        const txt = _dec.decode(bytes);
+        if(!txt.trim().startsWith('{')){ showToast('Ese archivo no parece un respaldo del tablero.'); return; }
+        ioImportText.value = txt;
+        return;
+      }
       const pass = (prompt('Este archivo está protegido. Contraseña:') || '').trim();
       if(!pass) return;
       try{ ioImportText.value = await decryptFromBytes(bytes, pass); }
