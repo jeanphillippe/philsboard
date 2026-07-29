@@ -602,7 +602,7 @@
       <div class="field">
         <label>Contraseña (opcional)</label>
         <input type="text" id="io-pass" placeholder="Vacío = sin cifrar" autocomplete="off" spellcheck="false">
-        <p class="hint">Con contraseña, el archivo se cifra y se pide al importar. Si la perdés, el contenido no se puede recuperar.</p>
+        <p class="hint">Con contraseña, el archivo se cifra y se pide la clave al importar. Si la perdés, el contenido no se puede recuperar.</p>
       </div>
       <div class="image-row">
         <button type="button" class="chip-btn" id="io-copy">Copiar</button>
@@ -1852,22 +1852,44 @@
       base, { name:'AES-GCM', length:256 }, false, ['encrypt','decrypt']
     );
   }
+  // Compresión gzip nativa. Solo se usa dentro del archivo cifrado: ahí el
+  // contenido ya es ilegible, así que no se pierde nada y el texto baja ~85%.
+  async function gzipBytes(text){
+    if(typeof CompressionStream === 'undefined') return null;
+    const stream = new Blob([_enc.encode(text)]).stream().pipeThrough(new CompressionStream('gzip'));
+    return new Uint8Array(await new Response(stream).arrayBuffer());
+  }
+  async function gunzipText(bytes){
+    if(typeof DecompressionStream === 'undefined') throw new Error('sin-gzip');
+    const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+    return _dec.decode(await new Response(stream).arrayBuffer());
+  }
   async function encryptText(text, pass){
     const salt = crypto.getRandomValues(new Uint8Array(16));
     const iv = crypto.getRandomValues(new Uint8Array(12));
     const key = await deriveKey(pass, salt);
-    const ct = await crypto.subtle.encrypt({ name:'AES-GCM', iv }, key, _enc.encode(text));
-    return JSON.stringify({ app:'phils-bord', enc:'aes-gcm-pbkdf2', v:1, salt:_b64(salt), iv:_b64(iv), data:_b64(ct) }, null, 2);
+    let body = await gzipBytes(text), zip = 'gzip';
+    if(!body){ body = _enc.encode(text); zip = null; }   // navegador viejo: sigue igual, sin comprimir
+    const ct = await crypto.subtle.encrypt({ name:'AES-GCM', iv }, key, body);
+    const out = { app:'phils-bord', enc:'aes-gcm-pbkdf2', v:1, salt:_b64(salt), iv:_b64(iv) };
+    if(zip) out.zip = zip;
+    out.data = _b64(ct);
+    return JSON.stringify(out, null, 2);
   }
   async function decryptPayload(obj, pass){
     const key = await deriveKey(pass, _unb64(obj.salt));
     const pt = await crypto.subtle.decrypt({ name:'AES-GCM', iv:_unb64(obj.iv) }, key, _unb64(obj.data));
-    return _dec.decode(pt);
+    return obj.zip === 'gzip' ? await gunzipText(new Uint8Array(pt)) : _dec.decode(pt);
   }
   const refreshExportCipher = debounce(async ()=>{
     const pass = ioPass.value.trim();
     if(!pass){ ioExportText.value = ioPlain; return; }
-    try{ ioExportText.value = await encryptText(ioPlain, pass); }
+    try{
+      ioExportText.value = await encryptText(ioPlain, pass);
+      const antes = ioPlain.length, ahora = ioExportText.value.length;
+      if(ahora < antes) showToast('Cifrado y comprimido: ' + Math.round(100 - ahora/antes*100) + '% más liviano.');
+      else showToast('Cifrado.');
+    }
     catch(e){ ioExportText.value = ioPlain; showToast('Este navegador no puede cifrar acá.'); }
   }, 350);
   ioPass.addEventListener('input', refreshExportCipher);
@@ -1958,7 +1980,7 @@
       const pass = (prompt('Este archivo está protegido. Contraseña:') || '').trim();
       if(!pass) return;
       try{ parsedRaw = JSON.parse(await decryptPayload(parsedRaw, pass)); }
-      catch(e){ showToast('Contraseña incorrecta o archivo dañado.'); return; }
+      catch(e){ showToast(e && e.message === 'sin-gzip' ? 'Este navegador no puede abrir archivos comprimidos.' : 'Contraseña incorrecta o archivo dañado.'); return; }
     }
     if(parsedRaw && Array.isArray(parsedRaw.boards) && parsedRaw.boards.length){
       // Formato nuevo: reemplaza todos los tableros
