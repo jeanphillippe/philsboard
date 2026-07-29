@@ -98,6 +98,7 @@
   #menu-pop button:active{ background:var(--surface); }
   #menu-pop button.danger{ color:#F27E9C; }
 
+  /* ---- Selector de tableros (se abre tocando el nombre del tablero) ---- */
   #board-pop{
     position:fixed; top:calc(env(safe-area-inset-top,0px) + 43px); left:7px; z-index:22;
     background:var(--surface-2); border:1px solid var(--line); border-radius:10px;
@@ -424,7 +425,7 @@
     background:var(--surface-2); border:1px solid var(--line); color:#F27E9C; font-size:10px;
     line-height:1; padding:0;
   }
-
+  /* ---- Ficha (nueva/editar) compacta: menos scroll en teléfono, tablet y escritorio ---- */
   #sheet{ padding-top:10px; }
   #sheet .sheet-handle{ margin-bottom:8px; }
   #sheet .sheet-title{ font-size:12.5px; margin:0 0 9px; }
@@ -459,6 +460,14 @@
     color:var(--ink-dim); font-family:var(--font-mono); font-size:10.5px; text-align:center; cursor:pointer;
   }
   .dim-opt.selected{ border-color:var(--accent-2); color:var(--accent-2); background:rgba(79,209,197,.08); }
+  #paste-catcher{
+    display:none; min-height:46px; margin-top:6px; padding:14px 11px;
+    border:1px dashed var(--accent-2); border-radius:8px; background:var(--surface);
+    color:var(--ink); font-size:12px; text-align:center; outline:none;
+    -webkit-user-select:text; user-select:text;
+  }
+  #paste-catcher.show{ display:block; }
+  #paste-catcher:empty::before{ content:attr(data-ph); color:var(--ink-faint); }
   .sheet-actions{ display:flex; gap:9px; margin-top:16px; }
   .btn{ flex:1; padding:12px; border-radius:9px; border:1px solid var(--line); font-family:var(--font-sans); font-weight:600; font-size:14px; }
   .btn-primary{ background:var(--accent); border-color:var(--accent); color:#1A0F09; }
@@ -618,10 +627,12 @@
       </div>
       <div class="image-row">
         <button type="button" class="chip-btn" id="f-gallery-pick">Subir imágenes</button>
+        <button type="button" class="chip-btn" id="f-gallery-paste">Pegar imagen</button>
         <button type="button" class="chip-btn danger" id="f-gallery-clear">Quitar todas</button>
       </div>
+      <div id="paste-catcher" contenteditable="true" role="textbox" aria-label="Pegá la imagen acá" data-ph="Mantené apretado acá y elegí “Pegar”"></div>
       <input type="file" id="f-gallery-file" accept="image/*" multiple hidden>
-      <p class="hint">La primera es la portada. También podés pegar una imagen con ⌘/Ctrl+V. Esc cierra · Enter guarda.</p>
+      <p class="hint">La primera es la portada. Podés pegar con ⌘/Ctrl+V o con el botón “Pegar imagen”. Esc cierra · Enter guarda.</p>
     </div>
     <div class="sheet-actions">
       <button class="btn btn-danger" id="f-delete" style="display:none;">Eliminar</button>
@@ -1726,6 +1737,8 @@
   const fGalleryAddUrl = document.getElementById('f-gallery-add-url');
   const fGalleryPick = document.getElementById('f-gallery-pick');
   const fGalleryFile = document.getElementById('f-gallery-file');
+  const fGalleryPaste = document.getElementById('f-gallery-paste');
+  const pasteCatcher = document.getElementById('paste-catcher');
 
   PALETTE.forEach(hex=>{
     const sw = document.createElement('div');
@@ -1803,16 +1816,81 @@
     if(files.length) addImageFiles(files);
   });
   fGalleryClear.addEventListener('click', ()=>{ selectedImages = []; renderImageList(); });
-  // Pegar una imagen del portapapeles mientras la ficha está abierta
+
+  // ---- Pegar imágenes (escritorio y móvil) ----
+  function imageFilesFromTransfer(dt){
+    if(!dt) return [];
+    const items = Array.from(dt.items || []);
+    let files = items.filter(it=> it.kind === 'file' && /^image\//.test(it.type))
+                     .map(it=> it.getAsFile()).filter(Boolean);
+    if(!files.length) files = Array.from(dt.files || []).filter(f=> /^image\//.test(f.type));
+    return files;
+  }
+  function looksLikeImageUrl(s){
+    return /^data:image\//i.test(s) || (/^https?:\/\//i.test(s) && !/\s/.test(s));
+  }
+  function ingestImageFiles(files){
+    if(!files.length) return Promise.resolve(false);
+    showToast(files.length > 1 ? 'Optimizando ' + files.length + ' imágenes…' : 'Optimizando imagen…');
+    return addImageFiles(files).then(()=>{ showToast('Listo.'); return true; });
+  }
+  // Móvil: leer el portapapeles con la Async Clipboard API (necesita el toque del usuario).
+  async function pasteFromClipboardApi(){
+    if(!(navigator.clipboard && navigator.clipboard.read)) return false;
+    const items = await navigator.clipboard.read();
+    const files = [];
+    for(const it of items){
+      const type = (it.types || []).find(t=> /^image\//.test(t));
+      if(!type) continue;
+      const blob = await it.getType(type);
+      files.push(new File([blob], 'pegada.' + (type.split('/')[1] || 'png'), { type }));
+    }
+    if(files.length) return ingestImageFiles(files);
+    // Si copiaron "la dirección de la imagen" en vez del archivo, viene como texto.
+    for(const it of items){
+      if(!(it.types || []).includes('text/plain')) continue;
+      const txt = (await (await it.getType('text/plain')).text()).trim();
+      if(looksLikeImageUrl(txt)){ selectedImages.push(txt); renderImageList(); showToast('Imagen agregada.'); return true; }
+    }
+    return false;
+  }
+  fGalleryPaste.addEventListener('click', ()=>{
+    pasteFromClipboardApi()
+      .then(ok=>{ if(!ok) showPasteCatcher(); })
+      .catch(()=> showPasteCatcher());
+  });
+  // Respaldo (iOS y navegadores sin permiso de lectura): caja donde el usuario pega a mano.
+  function showPasteCatcher(){
+    pasteCatcher.classList.add('show');
+    pasteCatcher.textContent = '';
+    pasteCatcher.focus();
+    const sel = window.getSelection && window.getSelection();
+    if(sel && document.createRange){
+      const r = document.createRange(); r.selectNodeContents(pasteCatcher);
+      sel.removeAllRanges(); sel.addRange(r);
+    }
+    showToast('Mantené apretado en el recuadro y elegí "Pegar".');
+  }
+  function hidePasteCatcher(){ pasteCatcher.classList.remove('show'); pasteCatcher.textContent = ''; }
+  pasteCatcher.addEventListener('blur', ()=> setTimeout(hidePasteCatcher, 150));
+  pasteCatcher.addEventListener('paste', (e)=>{
+    e.preventDefault();
+    const dt = e.clipboardData;
+    const files = imageFilesFromTransfer(dt);
+    hidePasteCatcher();
+    if(files.length){ ingestImageFiles(files); return; }
+    const txt = (dt && dt.getData('text/plain') || '').trim();
+    if(looksLikeImageUrl(txt)){ selectedImages.push(txt); renderImageList(); showToast('Imagen agregada.'); }
+    else showToast('No encontré una imagen en el portapapeles.');
+  });
+  // Pegar en cualquier parte de la ficha (escritorio: ⌘/Ctrl+V)
   document.addEventListener('paste', (e)=>{
     if(!sheetEl.classList.contains('open')) return;
-    const items = Array.from((e.clipboardData && e.clipboardData.items) || []);
-    const files = items.filter(it=> it.kind === 'file' && /^image\//.test(it.type))
-                       .map(it=> it.getAsFile()).filter(Boolean);
+    if(e.target === pasteCatcher) return;
+    const files = imageFilesFromTransfer(e.clipboardData);
     if(!files.length) return;
     e.preventDefault();
-    showToast(files.length > 1 ? 'Optimizando ' + files.length + ' imágenes…' : 'Optimizando imagen…');
-    addImageFiles(files).then(()=> showToast('Listo.'));
+    ingestImageFiles(files);
   });
 
   function openSheet(mode, targetNode){
@@ -1857,9 +1935,14 @@
   document.addEventListener('keydown', (e)=>{
     if(!sheetEl.classList.contains('open')) return;
     if(cropSheetEl.classList.contains('open')) return;
-    if(e.key === 'Escape'){ e.preventDefault(); closeSheet(); return; }
+    if(e.key === 'Escape'){
+      e.preventDefault();
+      if(pasteCatcher.classList.contains('show')){ hidePasteCatcher(); return; }
+      closeSheet(); return;
+    }
     if(e.key !== 'Enter' || e.isComposing) return;
     const t = e.target;
+    if(t === pasteCatcher) return;
     const combo = e.metaKey || e.ctrlKey;
     if(t === fGalleryUrl && !combo){ e.preventDefault(); fGalleryAddUrl.click(); return; }
     if(t && t.tagName === 'TEXTAREA' && !combo) return;
