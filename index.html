@@ -174,6 +174,23 @@
     background:rgba(0,0,0,.18); border-radius:8px;
   }
   .yt-thumb:active{ transform:scale(.96); }
+  /* Tile mínimo para links que no son de YouTube: favicon + dominio + ruta */
+  .link-thumb{
+    width:136px; height:76px; border-radius:8px; cursor:pointer; overflow:hidden;
+    background:var(--surface-2); border:1px solid var(--line); padding:8px;
+    display:flex; flex-direction:column; gap:5px; text-decoration:none;
+  }
+  .link-thumb:active{ transform:scale(.96); }
+  .lt-head{ display:flex; align-items:center; gap:5px; min-width:0; }
+  .lt-ico{ width:14px; height:14px; border-radius:3px; flex:0 0 auto; }
+  .lt-host{
+    font-family:var(--font-mono); font-size:10px; color:var(--accent-2);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .lt-path{
+    font-size:11px; line-height:1.3; color:var(--ink-dim); overflow:hidden;
+    display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; word-break:break-word;
+  }
 
   /* ---- Modal de video (YouTube embebido, sin salir de la página) ---- */
   #video-overlay{
@@ -582,6 +599,11 @@
     <div id="io-export-view">
       <p class="hint" style="margin:0 0 10px;">Incluye todos tus tableros. Guardá el archivo donde quieras (por ejemplo, Google Drive).</p>
       <div class="field"><textarea id="io-export-text" readonly></textarea></div>
+      <div class="field">
+        <label>Contraseña (opcional)</label>
+        <input type="text" id="io-pass" placeholder="Vacío = sin cifrar" autocomplete="off" spellcheck="false">
+        <p class="hint">Con contraseña, el archivo se cifra y se pide al importar. Si la perdés, el contenido no se puede recuperar.</p>
+      </div>
       <div class="image-row">
         <button type="button" class="chip-btn" id="io-copy">Copiar</button>
         <button type="button" class="chip-btn" id="io-download">Descargar</button>
@@ -786,14 +808,30 @@
       return `<a href="${escapeHtml(raw)}" class="note-link" target="_blank" rel="noopener">${escapeHtml(label)}</a>` + suffix;
     });
   }
-  function collectYtIds(node){
-    const ids = [];
+  // Junta todos los links del nodo: los de YouTube como {yt:id}, el resto como {url}
+  function collectLinks(node){
+    const out = [], seen = {};
     ((node.pitch || '') + '\n' + (node.notes || '')).replace(URL_RE, (u)=>{
-      const id = ytIdFromUrl(u);
-      if(id && ids.indexOf(id) === -1) ids.push(id);
+      const raw = u.replace(/&amp;/g, '&').replace(/[.,;:)\]]+$/, '');
+      const id = ytIdFromUrl(raw);
+      const key = id ? 'yt:' + id : 'u:' + raw;
+      if(!seen[key]){ seen[key] = 1; out.push(id ? { yt:id } : { url:raw }); }
       return u;
     });
-    return ids;
+    return out;
+  }
+  // Thumb mínima de texto para links comunes: favicon + dominio + ruta
+  function linkThumbHtml(url){
+    let host = url, path = '';
+    try{
+      const p = new URL(url);
+      host = p.hostname.replace(/^www\./, '');
+      path = decodeURIComponent(p.pathname + p.search).replace(/^\/+|\/+$/g, '');
+    }catch(e){}
+    if(path.length > 70) path = path.slice(0, 68) + '…';
+    return `<a class="link-thumb" href="${escapeHtml(url)}" target="_blank" rel="noopener">`
+      + `<span class="lt-head"><img class="lt-ico" src="https://icons.duckduckgo.com/ip3/${encodeURIComponent(host)}.ico" alt="" onerror="this.style.visibility='hidden'"><span class="lt-host">${escapeHtml(host)}</span></span>`
+      + `<span class="lt-path">${escapeHtml(path || host)}</span></a>`;
   }
   function statusLabel(s){ return s==='building' ? 'En desarrollo' : s==='live' ? 'Activo' : 'Idea'; }
   function nextFrame(fn){ requestAnimationFrame(()=>requestAnimationFrame(fn)); }
@@ -1037,8 +1075,10 @@
       det.className = 'detail';
       const pitchHtml = current.pitch ? `<p class="detail-pitch">${linkifyHtml(current.pitch)}</p>` : '';
       const notesHtml = current.notes ? `<p class="detail-notes">${linkifyHtml(current.notes)}</p>` : '';
-      const ytIds = collectYtIds(current);
-      const ytHtml = ytIds.length ? `<div class="yt-strip">${ytIds.map(id=>`<div class="yt-thumb" data-yt="${id}" style="background-image:url('https://i.ytimg.com/vi/${id}/hqdefault.jpg')"></div>`).join('')}</div>` : '';
+      const links = collectLinks(current);
+      const ytHtml = links.length ? `<div class="yt-strip">${links.map(l=> l.yt
+        ? `<div class="yt-thumb" data-yt="${l.yt}" style="background-image:url('https://i.ytimg.com/vi/${l.yt}/hqdefault.jpg')"></div>`
+        : linkThumbHtml(l.url)).join('')}</div>` : '';
       const galleryHtml = (current.gallery && current.gallery.length) ? `<div class="gallery-slider" id="detail-gallery"></div>` : '';
       const media = [];
       if(current.image) media.push(current.image);
@@ -1794,6 +1834,43 @@
   const ioImportText = document.getElementById('io-import-text');
   const ioImportBtn = document.getElementById('io-import-btn');
   const ioFileInput = document.getElementById('io-file');
+  const ioPass = document.getElementById('io-pass');
+  let ioPlain = '';
+
+  // ---- Cifrado del archivo exportado (AES-GCM 256 + PBKDF2, todo en el navegador) ----
+  const _enc = new TextEncoder(), _dec = new TextDecoder();
+  function _b64(buf){
+    const u = new Uint8Array(buf); let s = '';
+    for(let i=0; i<u.length; i+=0x8000) s += String.fromCharCode.apply(null, u.subarray(i, i+0x8000));
+    return btoa(s);
+  }
+  function _unb64(str){ return Uint8Array.from(atob(str), c=> c.charCodeAt(0)); }
+  async function deriveKey(pass, salt){
+    const base = await crypto.subtle.importKey('raw', _enc.encode(pass), 'PBKDF2', false, ['deriveKey']);
+    return crypto.subtle.deriveKey(
+      { name:'PBKDF2', salt, iterations:150000, hash:'SHA-256' },
+      base, { name:'AES-GCM', length:256 }, false, ['encrypt','decrypt']
+    );
+  }
+  async function encryptText(text, pass){
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const key = await deriveKey(pass, salt);
+    const ct = await crypto.subtle.encrypt({ name:'AES-GCM', iv }, key, _enc.encode(text));
+    return JSON.stringify({ app:'phils-bord', enc:'aes-gcm-pbkdf2', v:1, salt:_b64(salt), iv:_b64(iv), data:_b64(ct) }, null, 2);
+  }
+  async function decryptPayload(obj, pass){
+    const key = await deriveKey(pass, _unb64(obj.salt));
+    const pt = await crypto.subtle.decrypt({ name:'AES-GCM', iv:_unb64(obj.iv) }, key, _unb64(obj.data));
+    return _dec.decode(pt);
+  }
+  const refreshExportCipher = debounce(async ()=>{
+    const pass = ioPass.value.trim();
+    if(!pass){ ioExportText.value = ioPlain; return; }
+    try{ ioExportText.value = await encryptText(ioPlain, pass); }
+    catch(e){ ioExportText.value = ioPlain; showToast('Este navegador no puede cifrar acá.'); }
+  }, 350);
+  ioPass.addEventListener('input', refreshExportCipher);
 
   function openIOSheet(mode){
     ioTitle.textContent = mode === 'export' ? 'Exportar' : 'Importar';
@@ -1802,7 +1879,9 @@
     ioImportBtn.style.display = mode === 'import' ? 'block' : 'none';
     if(mode === 'export'){
       syncActiveBoard();
-      ioExportText.value = JSON.stringify({ app:'phils-bord', boards, active: activeBoardIdx }, null, 2);
+      ioPlain = JSON.stringify({ app:'phils-bord', boards, active: activeBoardIdx }, null, 2);
+      ioPass.value = '';
+      ioExportText.value = ioPlain;
     } else {
       ioImportText.value = '';
     }
@@ -1869,12 +1948,18 @@
     reader.readAsText(file);
     ioFileInput.value = '';
   });
-  ioImportBtn.addEventListener('click', ()=>{
+  ioImportBtn.addEventListener('click', async ()=>{
     const raw = ioImportText.value.trim();
     if(!raw){ showToast('Pegá el texto o elegí un archivo primero.'); return; }
     let parsedRaw;
     try{ parsedRaw = JSON.parse(raw); }
     catch(e){ showToast('Ese texto no es un JSON válido.'); return; }
+    if(parsedRaw && parsedRaw.enc && parsedRaw.data){
+      const pass = (prompt('Este archivo está protegido. Contraseña:') || '').trim();
+      if(!pass) return;
+      try{ parsedRaw = JSON.parse(await decryptPayload(parsedRaw, pass)); }
+      catch(e){ showToast('Contraseña incorrecta o archivo dañado.'); return; }
+    }
     if(parsedRaw && Array.isArray(parsedRaw.boards) && parsedRaw.boards.length){
       // Formato nuevo: reemplaza todos los tableros
       if(!confirm('Esto reemplaza todos tus tableros en este dispositivo. ¿Continuar?')) return;
