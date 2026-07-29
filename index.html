@@ -534,12 +534,8 @@
       <input type="text" id="f-title" maxlength="60" placeholder="Nombre">
     </div>
     <div class="field">
-      <label for="f-pitch">Línea corta (opcional)</label>
-      <input type="text" id="f-pitch" maxlength="90" placeholder="Se muestra también al abrir">
-    </div>
-    <div class="field">
       <label for="f-notes">Notas</label>
-      <textarea id="f-notes" maxlength="2000" placeholder="Un renglón por línea, como en la pizarra"></textarea>
+      <textarea id="f-notes" maxlength="8000" placeholder="Un renglón por línea. La primera se usa como bajada."></textarea>
     </div>
     <div class="field">
       <label>Estado</label>
@@ -721,7 +717,6 @@
     return {
       id: uid(),
       title: opts.title || '',
-      pitch: opts.pitch || '',
       notes: opts.notes || '',
       status: opts.status || 'idea',
       color: opts.color || PALETTE[0],
@@ -731,13 +726,20 @@
       children: opts.children || []
     };
   }
+  function mergeLegacyPitch(n){
+    const notes = typeof n.notes === 'string' ? n.notes : '';
+    const pitch = typeof n.pitch === 'string' ? n.pitch.trim() : '';
+    if(!pitch) return notes;
+    if(!notes) return pitch;
+    return notes.trim().startsWith(pitch) ? notes : pitch + '\n' + notes;
+  }
   function normalizeNode(n){
     if(!n || typeof n !== 'object') return null;
     return {
       id: (typeof n.id === 'string' && n.id) ? n.id : uid(),
       title: typeof n.title === 'string' ? n.title : '',
-      pitch: typeof n.pitch === 'string' ? n.pitch : '',
-      notes: typeof n.notes === 'string' ? n.notes : '',
+      // Compatibilidad: si viene de una versión vieja con "pitch", pasa a ser la primera línea de notas
+      notes: mergeLegacyPitch(n),
       status: ['idea','building','live'].includes(n.status) ? n.status : 'idea',
       color: typeof n.color === 'string' ? n.color : PALETTE[0],
       size: ['full','v','h','hh'].includes(n.size) ? n.size : 'full',
@@ -811,7 +813,7 @@
   // Junta todos los links del nodo: los de YouTube como {yt:id}, el resto como {url}
   function collectLinks(node){
     const out = [], seen = {};
-    ((node.pitch || '') + '\n' + (node.notes || '')).replace(URL_RE, (u)=>{
+    (node.notes || '').replace(URL_RE, (u)=>{
       const raw = u.replace(/&amp;/g, '&').replace(/[.,;:)\]]+$/, '');
       const id = ytIdFromUrl(raw);
       const key = id ? 'yt:' + id : 'u:' + raw;
@@ -832,6 +834,17 @@
     return `<a class="link-thumb" href="${escapeHtml(url)}" target="_blank" rel="noopener">`
       + `<span class="lt-head"><img class="lt-ico" src="https://icons.duckduckgo.com/ip3/${encodeURIComponent(host)}.ico" alt="" onerror="this.style.visibility='hidden'"><span class="lt-host">${escapeHtml(host)}</span></span>`
       + `<span class="lt-path">${escapeHtml(path || host)}</span></a>`;
+  }
+  // La "línea corta" ya no se guarda: es la primera línea de las notas,
+  // siempre que sea breve. El resto se muestra debajo como cuerpo.
+  function splitNotes(notes){
+    const txt = (notes || '').trim();
+    if(!txt) return { lead:'', body:'' };
+    const nl = txt.indexOf('\n');
+    if(nl === -1) return txt.length <= 140 ? { lead:txt, body:'' } : { lead:'', body:txt };
+    const first = txt.slice(0, nl).trim();
+    if(!first || first.length > 140) return { lead:'', body:txt };
+    return { lead:first, body:txt.slice(nl+1).replace(/^\n+/,'') };
   }
   function statusLabel(s){ return s==='building' ? 'En desarrollo' : s==='live' ? 'Activo' : 'Idea'; }
   function nextFrame(fn){ requestAnimationFrame(()=>requestAnimationFrame(fn)); }
@@ -1073,8 +1086,9 @@
     if(stack.length > 1){
       const det = document.createElement('div');
       det.className = 'detail';
-      const pitchHtml = current.pitch ? `<p class="detail-pitch">${linkifyHtml(current.pitch)}</p>` : '';
-      const notesHtml = current.notes ? `<p class="detail-notes">${linkifyHtml(current.notes)}</p>` : '';
+      const parts = splitNotes(current.notes);
+      const pitchHtml = parts.lead ? `<p class="detail-pitch">${linkifyHtml(parts.lead)}</p>` : '';
+      const notesHtml = parts.body ? `<p class="detail-notes">${linkifyHtml(parts.body)}</p>` : '';
       const links = collectLinks(current);
       const ytHtml = links.length ? `<div class="yt-strip">${links.map(l=> l.yt
         ? `<div class="yt-thumb" data-yt="${l.yt}" style="background-image:url('https://i.ytimg.com/vi/${l.yt}/hqdefault.jpg')"></div>`
@@ -1164,7 +1178,7 @@
         <button class="edit-btn" aria-label="Editar">✎</button>
       </div>
       <h3 class="card-title">${escapeHtml(child.title)}</h3>
-      <p class="card-note">${escapeHtml(child.pitch || child.notes)}</p>
+      <p class="card-note">${escapeHtml(child.notes)}</p>
       ${footer}`;
 
     card.querySelector('.edit-btn').addEventListener('click', (e)=>{ e.stopPropagation(); openSheet('edit', child); });
@@ -1648,7 +1662,6 @@
   const sheetOverlay = document.getElementById('sheet-overlay');
   const sheetEl = document.getElementById('sheet');
   const fTitle = document.getElementById('f-title');
-  const fPitch = document.getElementById('f-pitch');
   const fNotes = document.getElementById('f-notes');
   const fStatus = document.getElementById('f-status');
   const fSize = document.getElementById('f-size');
@@ -1757,7 +1770,6 @@
     if(mode === 'edit'){
       sheetTitle.textContent = 'Editar';
       fTitle.value = targetNode.title;
-      fPitch.value = targetNode.pitch;
       fNotes.value = targetNode.notes;
       selectedColor = targetNode.color;
       selectedStatus = targetNode.status;
@@ -1768,7 +1780,7 @@
       fDelete.style.display = (targetNode !== tree) ? 'block' : 'none';
     } else {
       sheetTitle.textContent = 'Nueva';
-      fTitle.value = ''; fPitch.value = ''; fNotes.value = '';
+      fTitle.value = ''; fNotes.value = '';
       selectedColor = PALETTE[Math.floor(Math.random()*PALETTE.length)];
       selectedStatus = 'idea';
       selectedSize = 'full';
@@ -1797,11 +1809,10 @@
     const title = fTitle.value.trim();
     if(!title){ fTitle.focus(); return; }
     if(sheetMode === 'create'){
-      const n = node({ title, pitch:fPitch.value.trim(), notes:fNotes.value.trim(), status:selectedStatus, color:selectedColor, size:selectedSize, image:selectedImage, gallery:selectedGallery });
+      const n = node({ title, notes:fNotes.value.trim(), status:selectedStatus, color:selectedColor, size:selectedSize, image:selectedImage, gallery:selectedGallery });
       stack[stack.length-1].children.push(n);
     } else if(sheetMode === 'edit' && editingTarget){
       editingTarget.title = title;
-      editingTarget.pitch = fPitch.value.trim();
       editingTarget.notes = fNotes.value.trim();
       editingTarget.status = selectedStatus;
       editingTarget.color = selectedColor;
