@@ -944,6 +944,11 @@
     }
   }
 
+  // ¿Esto parece un nodo del tablero? Evita que cualquier JSON al azar pise los datos.
+  function looksLikeTree(o){
+    return !!o && typeof o === 'object' && !Array.isArray(o) &&
+           (typeof o.title === 'string' || Array.isArray(o.children));
+  }
   function normalizeBoard(b){
     return {
       id: (b && typeof b.id === 'string' && b.id) ? b.id : uid(),
@@ -2156,7 +2161,13 @@
   ioFileInput.addEventListener('change', ()=>{
     const file = ioFileInput.files && ioFileInput.files[0];
     if(!file) return;
+    if(file.size > 60 * 1024 * 1024){
+      ioFileInput.value = '';
+      showToast('Ese archivo es demasiado grande para ser un respaldo.');
+      return;
+    }
     const reader = new FileReader();
+    reader.onerror = ()=> showToast('No pude leer ese archivo.');
     reader.onload = async ()=>{
       const bytes = new Uint8Array(reader.result);
       if(!isBrdFile(bytes)){
@@ -2189,11 +2200,17 @@
       try{ parsedRaw = JSON.parse(await decryptPayload(parsedRaw, pass)); }
       catch(e){ showToast(e && e.message === 'sin-gzip' ? 'Este navegador no puede abrir archivos comprimidos.' : 'Contraseña incorrecta o archivo dañado.'); return; }
     }
-    if(parsedRaw && Array.isArray(parsedRaw.boards) && parsedRaw.boards.length){
+    const okBoards = (parsedRaw && Array.isArray(parsedRaw.boards))
+      ? parsedRaw.boards.filter(b=> b && looksLikeTree(b.tree)) : [];
+    if(okBoards.length){
       // Formato nuevo: reemplaza todos los tableros
-      if(!confirm('Esto reemplaza todos tus tableros en este dispositivo. ¿Continuar?')) return;
-      boards = parsedRaw.boards.map(normalizeBoard);
-      activateBoard(parseInt(parsedRaw.active, 10) || 0);
+      const total = parsedRaw.boards.length;
+      const aviso = okBoards.length < total
+        ? 'Encontré ' + okBoards.length + ' de ' + total + ' tableros válidos. Esto reemplaza todos tus tableros en este dispositivo. ¿Continuar?'
+        : 'Esto reemplaza todos tus tableros en este dispositivo. ¿Continuar?';
+      if(!confirm(aviso)) return;
+      boards = okBoards.map(normalizeBoard);
+      activateBoard(Math.min(Math.max(parseInt(parsedRaw.active, 10) || 0, 0), boards.length - 1));
     } else {
       // Formato anterior (un solo tablero): reemplaza solo el tablero actual
       let importedTree = parsedRaw, importedSettings = null;
@@ -2201,6 +2218,7 @@
         importedTree = parsedRaw.tree;
         importedSettings = parsedRaw.settings;
       }
+      if(!looksLikeTree(importedTree)){ showToast('Ese JSON no es un respaldo del tablero.'); return; }
       const normalized = normalizeNode(importedTree);
       if(!normalized){ showToast('El archivo no tiene el formato esperado.'); return; }
       if(!confirm('Esto reemplaza el tablero actual. ¿Continuar?')) return;
