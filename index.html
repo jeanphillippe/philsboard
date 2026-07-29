@@ -415,6 +415,11 @@
     position:relative; width:52px; height:52px; border-radius:6px; background-size:cover;
     background-position:center; background-color:var(--surface); border:1px solid var(--line);
   }
+  .gallery-thumb.cover::after{
+    content:'portada'; position:absolute; left:0; right:0; bottom:0; text-align:center;
+    font-family:var(--font-mono); font-size:7.5px; letter-spacing:.03em; color:#fff;
+    background:rgba(0,0,0,.62); border-radius:0 0 5px 5px; padding:1px 0;
+  }
   .gallery-thumb button{
     position:absolute; top:-6px; right:-6px; width:18px; height:18px; border-radius:50%;
     background:var(--surface-2); border:1px solid var(--line); color:#F27E9C; font-size:10px;
@@ -555,26 +560,18 @@
       </div>
     </div>
     <div class="field">
-      <label for="f-image-url">Imagen principal, fondo (opcional)</label>
-      <input type="text" id="f-image-url" placeholder="Pegá un link de imagen…">
-      <div class="image-row">
-        <button type="button" class="chip-btn" id="f-image-pick">Subir imagen</button>
-        <button type="button" class="chip-btn danger" id="f-image-clear">Quitar imagen</button>
-      </div>
-      <input type="file" id="f-image-file" accept="image/*" hidden>
-      <div id="f-image-preview" class="image-preview"></div>
-    </div>
-    <div class="field">
-      <label>Más imágenes (opcional)</label>
+      <label>Imágenes (opcional)</label>
       <div id="f-gallery-list" class="gallery-list"></div>
       <div class="image-row">
-        <input type="text" id="f-gallery-url" placeholder="Pegá un link…" style="flex:1 1 150px;">
-        <button type="button" class="chip-btn" id="f-gallery-add-url">Agregar link</button>
+        <input type="text" id="f-gallery-url" placeholder="Pegá un link de imagen…" style="flex:1 1 150px;">
+        <button type="button" class="chip-btn" id="f-gallery-add-url">Agregar</button>
       </div>
       <div class="image-row">
         <button type="button" class="chip-btn" id="f-gallery-pick">Subir imágenes</button>
+        <button type="button" class="chip-btn danger" id="f-gallery-clear">Quitar todas</button>
       </div>
       <input type="file" id="f-gallery-file" accept="image/*" multiple hidden>
+      <p class="hint">La primera es la portada. También podés pegar una imagen con ⌘/Ctrl+V.</p>
     </div>
     <div class="field">
       <label>Color</label>
@@ -610,8 +607,8 @@
     <div id="io-import-view" style="display:none;">
       <div class="field"><textarea id="io-import-text" placeholder="Pegá acá el texto exportado…"></textarea></div>
       <div class="image-row">
-        <button type="button" class="chip-btn" id="io-pick-file">Elegir archivo</button>
-        <input type="file" id="io-file" accept="application/json,.json" hidden>
+        <button type="button" class="chip-btn" id="io-pick-file">Elegir archivo (.brd o .json)</button>
+        <input type="file" id="io-file" accept=".brd,.json,application/json" hidden>
       </div>
     </div>
 
@@ -772,8 +769,7 @@
   let selectedColor = PALETTE[0];
   let selectedStatus = 'idea';
   let selectedSize = 'full';
-  let selectedImage = '';
-  let selectedGallery = [];
+  let selectedImages = [];   // [portada, ...resto]
   let saveTimer = null;
   let suppressClickUntil = 0;
   let currentGridEl = null;
@@ -1668,11 +1664,7 @@
   const fColors = document.getElementById('f-colors');
   const fDelete = document.getElementById('f-delete');
   const sheetTitle = document.getElementById('sheet-title');
-  const fImageUrl = document.getElementById('f-image-url');
-  const fImageFile = document.getElementById('f-image-file');
-  const fImagePick = document.getElementById('f-image-pick');
-  const fImageClear = document.getElementById('f-image-clear');
-  const fImagePreview = document.getElementById('f-image-preview');
+  const fGalleryClear = document.getElementById('f-gallery-clear');
   const fGalleryList = document.getElementById('f-gallery-list');
   const fGalleryUrl = document.getElementById('f-gallery-url');
   const fGalleryAddUrl = document.getElementById('f-gallery-add-url');
@@ -1702,66 +1694,62 @@
   function refreshSize(){
     [...fSize.children].forEach(opt=> opt.classList.toggle('selected', opt.dataset.v === selectedSize));
   }
-  function updateImagePreview(){
-    if(selectedImage){
-      fImagePreview.style.backgroundImage = `url("${selectedImage.replace(/"/g,'')}")`;
-      fImagePreview.classList.add('show');
-    } else {
-      fImagePreview.style.backgroundImage = '';
-      fImagePreview.classList.remove('show');
-    }
-  }
-  fImageUrl.addEventListener('input', ()=>{ selectedImage = fImageUrl.value.trim(); updateImagePreview(); });
-  fImagePick.addEventListener('click', ()=> fImageFile.click());
-  fImageFile.addEventListener('change', ()=>{
-    const file = fImageFile.files && fImageFile.files[0];
-    if(!file) return;
-    const reader = new FileReader();
-    reader.onload = ()=>{
-      openCropper(reader.result, aspectForCardSize(selectedSize), 'Ajustar imagen principal')
-        .then(cropped=>{ selectedImage = cropped; fImageUrl.value = ''; updateImagePreview(); })
-        .catch(()=>{});
-    };
-    reader.readAsDataURL(file);
-    fImageFile.value = '';
-  });
-  fImageClear.addEventListener('click', ()=>{ selectedImage = ''; fImageUrl.value = ''; updateImagePreview(); });
-
-  function renderGalleryList(){
+  // Una sola lista de imágenes: la primera hace de portada/fondo de la tarjeta.
+  function renderImageList(){
     fGalleryList.innerHTML = '';
-    selectedGallery.forEach((src, i)=>{
+    selectedImages.forEach((src, i)=>{
       const t = document.createElement('div');
-      t.className = 'gallery-thumb';
+      t.className = 'gallery-thumb' + (i === 0 ? ' cover' : '');
       t.style.backgroundImage = `url("${src.replace(/"/g,'')}")`;
       t.innerHTML = '<button type="button" aria-label="Quitar">×</button>';
-      t.querySelector('button').addEventListener('click', ()=>{ selectedGallery.splice(i,1); renderGalleryList(); });
+      t.querySelector('button').addEventListener('click', ()=>{ selectedImages.splice(i,1); renderImageList(); });
       fGalleryList.appendChild(t);
     });
+  }
+  // Sube una imagen a la lista. La portada pasa por el recorte; el resto solo se optimiza.
+  function addImageFile(file){
+    return new Promise(resolve=>{
+      const reader = new FileReader();
+      reader.onload = ()=>{
+        const add = src=>{ selectedImages.push(src); renderImageList(); resolve(); };
+        if(selectedImages.length === 0){
+          openCropper(reader.result, aspectForCardSize(selectedSize), 'Ajustar portada')
+            .then(add).catch(()=> resolve());
+        } else {
+          optimizeImageDataUrl(reader.result).then(add);
+        }
+      };
+      reader.onerror = ()=> resolve();
+      reader.readAsDataURL(file);
+    });
+  }
+  async function addImageFiles(files){
+    for(const f of files) await addImageFile(f);   // de a una, para no encimar el recortador
   }
   fGalleryAddUrl.addEventListener('click', ()=>{
     const v = fGalleryUrl.value.trim();
     if(!v) return;
-    selectedGallery.push(v);
+    selectedImages.push(v);
     fGalleryUrl.value = '';
-    renderGalleryList();
+    renderImageList();
   });
   fGalleryPick.addEventListener('click', ()=> fGalleryFile.click());
   fGalleryFile.addEventListener('change', ()=>{
     const files = Array.from(fGalleryFile.files || []);
-    if(!files.length) return;
-    let pending = files.length;
-    files.forEach(file=>{
-      const reader = new FileReader();
-      reader.onload = ()=>{
-        optimizeImageDataUrl(reader.result).then(optimized=>{
-          selectedGallery.push(optimized);
-          pending--;
-          if(pending === 0) renderGalleryList();
-        });
-      };
-      reader.readAsDataURL(file);
-    });
     fGalleryFile.value = '';
+    if(files.length) addImageFiles(files);
+  });
+  fGalleryClear.addEventListener('click', ()=>{ selectedImages = []; renderImageList(); });
+  // Pegar una imagen del portapapeles mientras la ficha está abierta
+  document.addEventListener('paste', (e)=>{
+    if(!sheetEl.classList.contains('open')) return;
+    const items = Array.from((e.clipboardData && e.clipboardData.items) || []);
+    const files = items.filter(it=> it.kind === 'file' && /^image\//.test(it.type))
+                       .map(it=> it.getAsFile()).filter(Boolean);
+    if(!files.length) return;
+    e.preventDefault();
+    showToast(files.length > 1 ? 'Optimizando ' + files.length + ' imágenes…' : 'Optimizando imagen…');
+    addImageFiles(files).then(()=> showToast('Listo.'));
   });
 
   function openSheet(mode, targetNode){
@@ -1774,9 +1762,8 @@
       selectedColor = targetNode.color;
       selectedStatus = targetNode.status;
       selectedSize = targetNode.size || 'full';
-      selectedImage = targetNode.image || '';
-      selectedGallery = Array.isArray(targetNode.gallery) ? targetNode.gallery.slice() : [];
-      fImageUrl.value = (selectedImage && !selectedImage.startsWith('data:')) ? selectedImage : '';
+      selectedImages = (targetNode.image ? [targetNode.image] : [])
+        .concat(Array.isArray(targetNode.gallery) ? targetNode.gallery : []);
       fDelete.style.display = (targetNode !== tree) ? 'block' : 'none';
     } else {
       sheetTitle.textContent = 'Nueva';
@@ -1784,14 +1771,11 @@
       selectedColor = PALETTE[Math.floor(Math.random()*PALETTE.length)];
       selectedStatus = 'idea';
       selectedSize = 'full';
-      selectedImage = '';
-      selectedGallery = [];
-      fImageUrl.value = '';
+      selectedImages = [];
       fDelete.style.display = 'none';
     }
     fGalleryUrl.value = '';
-    updateImagePreview();
-    renderGalleryList();
+    renderImageList();
     refreshSwatches(); refreshStatus(); refreshSize();
     sheetOverlay.classList.add('open');
     sheetEl.classList.add('open');
@@ -1809,7 +1793,7 @@
     const title = fTitle.value.trim();
     if(!title){ fTitle.focus(); return; }
     if(sheetMode === 'create'){
-      const n = node({ title, notes:fNotes.value.trim(), status:selectedStatus, color:selectedColor, size:selectedSize, image:selectedImage, gallery:selectedGallery });
+      const n = node({ title, notes:fNotes.value.trim(), status:selectedStatus, color:selectedColor, size:selectedSize, image:selectedImages[0] || '', gallery:selectedImages.slice(1) });
       stack[stack.length-1].children.push(n);
     } else if(sheetMode === 'edit' && editingTarget){
       editingTarget.title = title;
@@ -1817,8 +1801,8 @@
       editingTarget.status = selectedStatus;
       editingTarget.color = selectedColor;
       editingTarget.size = selectedSize;
-      editingTarget.image = selectedImage;
-      editingTarget.gallery = selectedGallery.slice();
+      editingTarget.image = selectedImages[0] || '';
+      editingTarget.gallery = selectedImages.slice(1);
     }
     persist();
     closeSheet();
@@ -1846,7 +1830,9 @@
   const ioImportBtn = document.getElementById('io-import-btn');
   const ioFileInput = document.getElementById('io-file');
   const ioPass = document.getElementById('io-pass');
+  const ioCopyBtn = document.getElementById('io-copy');
   let ioPlain = '';
+  let ioCipher = null;   // Uint8Array cuando hay contraseña
 
   // ---- Cifrado del archivo exportado (AES-GCM 256 + PBKDF2, todo en el navegador) ----
   const _enc = new TextEncoder(), _dec = new TextDecoder();
@@ -1875,33 +1861,53 @@
     const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
     return _dec.decode(await new Response(stream).arrayBuffer());
   }
-  async function encryptText(text, pass){
+  // Archivo .brd: binario puro, sin base64 ni nombre de la app en claro.
+  // cabecera 34 bytes: magic(4) | versión(1) | flags(1, bit0 = gzip) | salt(16) | iv(12)
+  const BRD_MAGIC = [0x42, 0x52, 0x44, 0x31];   // "BRD1"
+  function isBrdFile(bytes){
+    return bytes.length > 34 && BRD_MAGIC.every((b, i)=> bytes[i] === b);
+  }
+  async function encryptToBytes(text, pass){
     const salt = crypto.getRandomValues(new Uint8Array(16));
     const iv = crypto.getRandomValues(new Uint8Array(12));
     const key = await deriveKey(pass, salt);
-    let body = await gzipBytes(text), zip = 'gzip';
-    if(!body){ body = _enc.encode(text); zip = null; }   // navegador viejo: sigue igual, sin comprimir
-    const ct = await crypto.subtle.encrypt({ name:'AES-GCM', iv }, key, body);
-    const out = { app:'phils-bord', enc:'aes-gcm-pbkdf2', v:1, salt:_b64(salt), iv:_b64(iv) };
-    if(zip) out.zip = zip;
-    out.data = _b64(ct);
-    return JSON.stringify(out, null, 2);
+    let body = await gzipBytes(text), flags = 1;
+    if(!body){ body = _enc.encode(text); flags = 0; }   // navegador viejo: cifra sin comprimir
+    const ct = new Uint8Array(await crypto.subtle.encrypt({ name:'AES-GCM', iv }, key, body));
+    const out = new Uint8Array(34 + ct.length);
+    out.set(BRD_MAGIC, 0); out[4] = 1; out[5] = flags;
+    out.set(salt, 6); out.set(iv, 22); out.set(ct, 34);
+    return out;
+  }
+  async function decryptFromBytes(bytes, pass){
+    const key = await deriveKey(pass, bytes.slice(6, 22));
+    const pt = new Uint8Array(await crypto.subtle.decrypt(
+      { name:'AES-GCM', iv: bytes.slice(22, 34) }, key, bytes.slice(34)
+    ));
+    return (bytes[5] & 1) ? await gunzipText(pt) : _dec.decode(pt);
   }
   async function decryptPayload(obj, pass){
     const key = await deriveKey(pass, _unb64(obj.salt));
     const pt = await crypto.subtle.decrypt({ name:'AES-GCM', iv:_unb64(obj.iv) }, key, _unb64(obj.data));
     return obj.zip === 'gzip' ? await gunzipText(new Uint8Array(pt)) : _dec.decode(pt);
   }
+  const kb = n=> (n/1024).toFixed(n < 102400 ? 1 : 0) + ' KB';
+  function setPlainExport(){
+    ioCipher = null;
+    ioExportText.value = ioPlain;
+    ioCopyBtn.style.display = '';
+  }
   const refreshExportCipher = debounce(async ()=>{
     const pass = ioPass.value.trim();
-    if(!pass){ ioExportText.value = ioPlain; return; }
+    if(!pass){ setPlainExport(); return; }
     try{
-      ioExportText.value = await encryptText(ioPlain, pass);
-      const antes = ioPlain.length, ahora = ioExportText.value.length;
-      if(ahora < antes) showToast('Cifrado y comprimido: ' + Math.round(100 - ahora/antes*100) + '% más liviano.');
-      else showToast('Cifrado.');
+      ioCipher = await encryptToBytes(ioPlain, pass);
+      ioCopyBtn.style.display = 'none';   // un binario no se pega como texto
+      ioExportText.value = 'Archivo .brd listo — ' + kb(ioCipher.length) + ' (sin cifrar: ' + kb(ioPlain.length) + ').\n'
+        + 'Es un binario cifrado y comprimido: usá Descargar o Compartir.';
+      showToast('Cifrado: ' + Math.round(100 - ioCipher.length/ioPlain.length*100) + '% más liviano.');
     }
-    catch(e){ ioExportText.value = ioPlain; showToast('Este navegador no puede cifrar acá.'); }
+    catch(e){ setPlainExport(); showToast('Este navegador no puede cifrar acá.'); }
   }, 350);
   ioPass.addEventListener('input', refreshExportCipher);
 
@@ -1912,9 +1918,9 @@
     ioImportBtn.style.display = mode === 'import' ? 'block' : 'none';
     if(mode === 'export'){
       syncActiveBoard();
-      ioPlain = JSON.stringify({ app:'phils-bord', boards, active: activeBoardIdx }, null, 2);
+      ioPlain = JSON.stringify({ v:1, boards, active: activeBoardIdx }, null, 2);
       ioPass.value = '';
-      ioExportText.value = ioPlain;
+      setPlainExport();
     } else {
       ioImportText.value = '';
     }
@@ -1944,11 +1950,20 @@
   });
   function exportFileName(){
     const d = new Date(), p = n=> String(n).padStart(2,'0');
-    return `phils-bord_${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}_${p(d.getHours())}-${p(d.getMinutes())}.json`;
+    const t = ((boards[activeBoardIdx] && boards[activeBoardIdx].tree.title) || 'tablero')
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^A-Za-z0-9]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase().slice(0, 40) || 'tablero';
+    return `${t}_${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}.${ioCipher ? 'brd' : 'json'}`;
+  }
+  function exportBlobParts(){
+    return ioCipher ? [ioCipher] : [ioPlain];
+  }
+  function exportMime(){
+    return ioCipher ? 'application/octet-stream' : 'application/json';
   }
   document.getElementById('io-download').addEventListener('click', ()=>{
     try{
-      const blob = new Blob([ioExportText.value], { type:'application/json' });
+      const blob = new Blob(exportBlobParts(), { type: exportMime() });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url; a.download = exportFileName();
@@ -1968,7 +1983,7 @@
   ioShareBtn.addEventListener('click', async ()=>{
     try{
       const name = exportFileName();
-      const file = new File([ioExportText.value], name, { type:'application/json' });
+      const file = new File(exportBlobParts(), name, { type: exportMime() });
       await navigator.share({ files:[file], title: name });
     }catch(e){ /* cancelado por el usuario */ }
   });
@@ -1977,8 +1992,19 @@
     const file = ioFileInput.files && ioFileInput.files[0];
     if(!file) return;
     const reader = new FileReader();
-    reader.onload = ()=>{ ioImportText.value = reader.result; };
-    reader.readAsText(file);
+    reader.onload = async ()=>{
+      const bytes = new Uint8Array(reader.result);
+      if(!isBrdFile(bytes)){ ioImportText.value = _dec.decode(bytes); return; }
+      const pass = (prompt('Este archivo está protegido. Contraseña:') || '').trim();
+      if(!pass) return;
+      try{ ioImportText.value = await decryptFromBytes(bytes, pass); }
+      catch(e){
+        showToast(e && e.message === 'sin-gzip' ? 'Este navegador no puede abrir archivos comprimidos.' : 'Contraseña incorrecta o archivo dañado.');
+        return;
+      }
+      ioImportBtn.click();
+    };
+    reader.readAsArrayBuffer(file);
     ioFileInput.value = '';
   });
   ioImportBtn.addEventListener('click', async ()=>{
