@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0E1B2B">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>PHIL'S BORD</title>
+<title>PHILS BORD</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
@@ -98,7 +98,6 @@
   #menu-pop button:active{ background:var(--surface); }
   #menu-pop button.danger{ color:#F27E9C; }
 
-  /* ---- Selector de tableros (se abre tocando el nombre del tablero) ---- */
   #board-pop{
     position:fixed; top:calc(env(safe-area-inset-top,0px) + 43px); left:7px; z-index:22;
     background:var(--surface-2); border:1px solid var(--line); border-radius:10px;
@@ -425,6 +424,41 @@
     background:var(--surface-2); border:1px solid var(--line); color:#F27E9C; font-size:10px;
     line-height:1; padding:0;
   }
+
+  #sheet{ padding-top:10px; }
+  #sheet .sheet-handle{ margin-bottom:8px; }
+  #sheet .sheet-title{ font-size:12.5px; margin:0 0 9px; }
+  #sheet .field{ margin-bottom:8px; }
+  #sheet .field label{ font-size:9.5px; margin-bottom:3px; }
+  #sheet .field input[type=text]{ padding:8px 10px; }
+  #sheet .field textarea{ min-height:56px; padding:8px 10px; }
+  #sheet .field .hint{ font-size:10px; margin-top:3px; }
+  #sheet .status-opt{ padding:6px 5px; font-size:9.5px; border-radius:7px; }
+  #sheet .swatches{ gap:7px; padding-top:0; }
+  #sheet .swatch{ width:22px; height:22px; }
+  #sheet .gallery-list{ gap:6px; margin-bottom:6px; }
+  #sheet .gallery-thumb{ width:44px; height:44px; }
+  #sheet .image-row{ gap:6px; margin-top:6px; }
+  #sheet .chip-btn{ padding:6px 10px; font-size:11.5px; }
+  #sheet .sheet-actions{ margin-top:10px; }
+  #sheet .btn{ padding:9px; font-size:13px; }
+  #sheet .btn-ghost, #sheet .btn-danger{ padding:9px 12px; }
+  .field-row{ display:block; }
+  @media (min-width:560px){
+    .field-row{ display:flex; gap:12px; align-items:flex-start; }
+    .field-row > .field{ flex:1 1 0; min-width:0; }
+  }
+  .dim-row{ display:flex; gap:5px; align-items:center; }
+  .dim-row + .dim-row{ margin-top:5px; }
+  .dim-label{
+    flex:0 0 auto; width:13px; font-family:var(--font-mono); font-size:9.5px;
+    color:var(--ink-faint); text-transform:uppercase;
+  }
+  .dim-opt{
+    flex:1 1 0; padding:6px 2px; border-radius:7px; border:1px solid var(--line); background:var(--surface);
+    color:var(--ink-dim); font-family:var(--font-mono); font-size:10.5px; text-align:center; cursor:pointer;
+  }
+  .dim-opt.selected{ border-color:var(--accent-2); color:var(--accent-2); background:rgba(79,209,197,.08); }
   .sheet-actions{ display:flex; gap:9px; margin-top:16px; }
   .btn{ flex:1; padding:12px; border-radius:9px; border:1px solid var(--line); font-family:var(--font-sans); font-weight:600; font-size:14px; }
   .btn-primary{ background:var(--accent); border-color:var(--accent); color:#1A0F09; }
@@ -449,7 +483,7 @@
     .card.dragging{ transform:none; transition:none; }
   }
   @media (min-width:900px){
-    #board-wrap{ max-width:1100px; margin:0 auto; }
+    #board-wrap{ /*max-width:1100px;*/ margin:0 auto; }
   }
 
   /* ---- Cropper: recorte + optimización de imágenes antes de guardarlas ---- */
@@ -542,21 +576,37 @@
       <label for="f-notes">Notas</label>
       <textarea id="f-notes" placeholder="Un renglón por línea. La primera se usa como bajada."></textarea>
     </div>
-    <div class="field">
-      <label>Estado</label>
-      <div class="status-row" id="f-status">
-        <div class="status-opt" data-v="idea">Idea</div>
-        <div class="status-opt" data-v="building">En desarrollo</div>
-        <div class="status-opt" data-v="live">Activo</div>
+    <div class="field-row">
+      <div class="field">
+        <label>Estado</label>
+        <div class="status-row" id="f-status">
+          <div class="status-opt" data-v="idea">Idea</div>
+          <div class="status-opt" data-v="building">Desarrollo</div>
+          <div class="status-opt" data-v="live">Activo</div>
+        </div>
+      </div>
+      <div class="field">
+        <label>Color</label>
+        <div class="swatches" id="f-colors"></div>
       </div>
     </div>
     <div class="field">
-      <label>Tamaño</label>
-      <div class="status-row wrap" id="f-size">
-        <div class="status-opt" data-v="full">Completa</div>
-        <div class="status-opt" data-v="v">Mitad vertical</div>
-        <div class="status-opt" data-v="h">Mitad horizontal</div>
-        <div class="status-opt" data-v="hh">Doble horizontal</div>
+      <label>Tamaño (ancho × alto)</label>
+      <div class="dim-row" id="f-gw">
+        <span class="dim-label">An</span>
+        <div class="dim-opt" data-v="1">0.5</div>
+        <div class="dim-opt" data-v="2">1</div>
+        <div class="dim-opt" data-v="4">2</div>
+        <div class="dim-opt" data-v="6">3</div>
+        <div class="dim-opt" data-v="8">4</div>
+      </div>
+      <div class="dim-row" id="f-gh">
+        <span class="dim-label">Al</span>
+        <div class="dim-opt" data-v="1">0.5</div>
+        <div class="dim-opt" data-v="2">1</div>
+        <div class="dim-opt" data-v="4">2</div>
+        <div class="dim-opt" data-v="6">3</div>
+        <div class="dim-opt" data-v="8">4</div>
       </div>
     </div>
     <div class="field">
@@ -571,11 +621,7 @@
         <button type="button" class="chip-btn danger" id="f-gallery-clear">Quitar todas</button>
       </div>
       <input type="file" id="f-gallery-file" accept="image/*" multiple hidden>
-      <p class="hint">La primera es la portada. También podés pegar una imagen con ⌘/Ctrl+V.</p>
-    </div>
-    <div class="field">
-      <label>Color</label>
-      <div class="swatches" id="f-colors"></div>
+      <p class="hint">La primera es la portada. También podés pegar una imagen con ⌘/Ctrl+V. Esc cierra · Enter guarda.</p>
     </div>
     <div class="sheet-actions">
       <button class="btn btn-danger" id="f-delete" style="display:none;">Eliminar</button>
@@ -703,6 +749,10 @@
   const PALETTE = ['#4FD1C5','#FF8A5C','#C9A5F2','#FFD166','#7FB3FF','#F27E9C','#9AE6B4','#F6AD55'];
   const STORAGE_KEY = 'idea-tree';
   const SIZE_SPANS = { full:{w:2,h:2}, v:{w:1,h:2}, h:{w:2,h:1}, hh:{w:4,h:2} };
+  // Tamaño libre: cada tarjeta guarda su ancho/alto en unidades finas de la grilla.
+  // Los botones muestran multiplicadores (0.5, 1, 2, 3, 4) sobre la tarjeta base (2×2).
+  const DIMS = [1,2,4,6,8];
+  function dimOr(v, fallback){ v = parseInt(v,10); return DIMS.includes(v) ? v : fallback; }
   const DEFAULT_SETTINGS = { bgType:'grid', bgColor:'#0E1B2B', bgImage:'', bgFit:'cover' };
 
   function uid(){
@@ -717,7 +767,8 @@
       notes: opts.notes || '',
       status: opts.status || 'idea',
       color: opts.color || PALETTE[0],
-      size: opts.size || 'full',
+      gw: dimOr(opts.gw, 2),
+      gh: dimOr(opts.gh, 2),
       image: opts.image || '',
       gallery: Array.isArray(opts.gallery) ? opts.gallery.slice() : [],
       children: opts.children || []
@@ -739,7 +790,9 @@
       notes: mergeLegacyPitch(n),
       status: ['idea','building','live'].includes(n.status) ? n.status : 'idea',
       color: typeof n.color === 'string' ? n.color : PALETTE[0],
-      size: ['full','v','h','hh'].includes(n.size) ? n.size : 'full',
+      // Compatibilidad: tarjetas viejas con size ('full','v','h','hh') pasan a gw/gh
+      gw: dimOr(n.gw, (SIZE_SPANS[n.size] || SIZE_SPANS.full).w),
+      gh: dimOr(n.gh, (SIZE_SPANS[n.size] || SIZE_SPANS.full).h),
       image: typeof n.image === 'string' ? n.image : '',
       gallery: Array.isArray(n.gallery) ? n.gallery.filter(s=>typeof s==='string') : [],
       children: Array.isArray(n.children) ? n.children.map(normalizeNode).filter(Boolean) : []
@@ -768,7 +821,8 @@
   let editingTarget = null;
   let selectedColor = PALETTE[0];
   let selectedStatus = 'idea';
-  let selectedSize = 'full';
+  let selectedGw = 2;
+  let selectedGh = 2;
   let selectedImages = [];   // [portada, ...resto]
   let saveTimer = null;
   let suppressClickUntil = 0;
@@ -1152,12 +1206,12 @@
   }
 
   function makeCard(child, index){
-    const spec = SIZE_SPANS[child.size] || SIZE_SPANS.full;
+    const gw = dimOr(child.gw, 2), gh = dimOr(child.gh, 2);
     const card = document.createElement('div');
-    card.className = 'card' + (child.size==='v' ? ' size-v' : child.size==='h' ? ' size-h' : child.size==='hh' ? ' size-hh' : '') + (child.image ? ' has-image' : '');
+    card.className = 'card' + (gh === 1 ? ' size-h' : '') + (child.image ? ' has-image' : '');
     card.dataset.id = child.id;
-    card.dataset.gw = spec.w;
-    card.dataset.gh = spec.h;
+    card.dataset.gw = gw;
+    card.dataset.gh = gh;
     card.style.setProperty('--stripe', child.color);
     card.style.setProperty('--stagger', Math.min(index*20, 200) + 'ms');
     if(child.image) card.style.setProperty('--bg-image', `url("${child.image.replace(/"/g,'\\"')}")`);
@@ -1648,9 +1702,10 @@
       return bestDataUrl(drawScaled(img, 0, 0, img.naturalWidth, img.naturalHeight, out.w, out.h)) || dataUrl;
     }).catch(()=> dataUrl);
   }
-  function aspectForCardSize(size){
-    if(size === 'v') return 3/4;
-    if(size === 'h' || size === 'hh') return 16/9;
+  function aspectForSpan(w, h){
+    const r = (w || 2) / (h || 2);
+    if(r <= 0.75) return 3/4;
+    if(r >= 1.6) return 16/9;
     return 1;
   }
 
@@ -1660,7 +1715,8 @@
   const fTitle = document.getElementById('f-title');
   const fNotes = document.getElementById('f-notes');
   const fStatus = document.getElementById('f-status');
-  const fSize = document.getElementById('f-size');
+  const fGw = document.getElementById('f-gw');
+  const fGh = document.getElementById('f-gh');
   const fColors = document.getElementById('f-colors');
   const fDelete = document.getElementById('f-delete');
   const sheetTitle = document.getElementById('sheet-title');
@@ -1688,11 +1744,18 @@
   function refreshStatus(){
     [...fStatus.children].forEach(opt=> opt.classList.toggle('selected', opt.dataset.v === selectedStatus));
   }
-  [...fSize.children].forEach(opt=>{
-    opt.addEventListener('click', ()=>{ selectedSize = opt.dataset.v; refreshSize(); });
+  // Los botones escriben directamente el ancho/alto (data-gw / data-gh) de la tarjeta.
+  fGw.addEventListener('click', (e)=>{
+    const b = e.target.closest('.dim-opt'); if(!b) return;
+    selectedGw = dimOr(b.dataset.v, 2); refreshSize();
+  });
+  fGh.addEventListener('click', (e)=>{
+    const b = e.target.closest('.dim-opt'); if(!b) return;
+    selectedGh = dimOr(b.dataset.v, 2); refreshSize();
   });
   function refreshSize(){
-    [...fSize.children].forEach(opt=> opt.classList.toggle('selected', opt.dataset.v === selectedSize));
+    fGw.querySelectorAll('.dim-opt').forEach(o=> o.classList.toggle('selected', +o.dataset.v === selectedGw));
+    fGh.querySelectorAll('.dim-opt').forEach(o=> o.classList.toggle('selected', +o.dataset.v === selectedGh));
   }
   // Una sola lista de imágenes: la primera hace de portada/fondo de la tarjeta.
   function renderImageList(){
@@ -1713,7 +1776,7 @@
       reader.onload = ()=>{
         const add = src=>{ selectedImages.push(src); renderImageList(); resolve(); };
         if(selectedImages.length === 0){
-          openCropper(reader.result, aspectForCardSize(selectedSize), 'Ajustar portada')
+          openCropper(reader.result, aspectForSpan(selectedGw, selectedGh), 'Ajustar portada')
             .then(add).catch(()=> resolve());
         } else {
           optimizeImageDataUrl(reader.result).then(add);
@@ -1761,7 +1824,8 @@
       fNotes.value = targetNode.notes;
       selectedColor = targetNode.color;
       selectedStatus = targetNode.status;
-      selectedSize = targetNode.size || 'full';
+      selectedGw = dimOr(targetNode.gw, 2);
+      selectedGh = dimOr(targetNode.gh, 2);
       selectedImages = (targetNode.image ? [targetNode.image] : [])
         .concat(Array.isArray(targetNode.gallery) ? targetNode.gallery : []);
       fDelete.style.display = (targetNode !== tree) ? 'block' : 'none';
@@ -1770,7 +1834,7 @@
       fTitle.value = ''; fNotes.value = '';
       selectedColor = PALETTE[Math.floor(Math.random()*PALETTE.length)];
       selectedStatus = 'idea';
-      selectedSize = 'full';
+      selectedGw = 2; selectedGh = 2;
       selectedImages = [];
       fDelete.style.display = 'none';
     }
@@ -1789,18 +1853,34 @@
   sheetOverlay.addEventListener('click', closeSheet);
   document.getElementById('f-cancel').addEventListener('click', closeSheet);
 
-  document.getElementById('f-save').addEventListener('click', ()=>{
+  // Atajos: Esc cierra, Enter guarda (en Notas hace falta ⌘/Ctrl+Enter).
+  document.addEventListener('keydown', (e)=>{
+    if(!sheetEl.classList.contains('open')) return;
+    if(cropSheetEl.classList.contains('open')) return;
+    if(e.key === 'Escape'){ e.preventDefault(); closeSheet(); return; }
+    if(e.key !== 'Enter' || e.isComposing) return;
+    const t = e.target;
+    const combo = e.metaKey || e.ctrlKey;
+    if(t === fGalleryUrl && !combo){ e.preventDefault(); fGalleryAddUrl.click(); return; }
+    if(t && t.tagName === 'TEXTAREA' && !combo) return;
+    e.preventDefault();
+    fSave.click();
+  });
+
+  const fSave = document.getElementById('f-save');
+  fSave.addEventListener('click', ()=>{
     const title = fTitle.value.trim();
     if(!title){ fTitle.focus(); return; }
     if(sheetMode === 'create'){
-      const n = node({ title, notes:fNotes.value.trim(), status:selectedStatus, color:selectedColor, size:selectedSize, image:selectedImages[0] || '', gallery:selectedImages.slice(1) });
+      const n = node({ title, notes:fNotes.value.trim(), status:selectedStatus, color:selectedColor, gw:selectedGw, gh:selectedGh, image:selectedImages[0] || '', gallery:selectedImages.slice(1) });
       stack[stack.length-1].children.push(n);
     } else if(sheetMode === 'edit' && editingTarget){
       editingTarget.title = title;
       editingTarget.notes = fNotes.value.trim();
       editingTarget.status = selectedStatus;
       editingTarget.color = selectedColor;
-      editingTarget.size = selectedSize;
+      editingTarget.gw = selectedGw;
+      editingTarget.gh = selectedGh;
       editingTarget.image = selectedImages[0] || '';
       editingTarget.gallery = selectedImages.slice(1);
     }
