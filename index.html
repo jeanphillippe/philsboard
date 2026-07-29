@@ -53,7 +53,7 @@
   header#crumbbar{
     position:fixed; top:0; left:0; right:0; z-index:20;
     display:flex; align-items:center;
-    padding:calc(env(safe-area-inset-top,0px) + 10px) 42px 9px 9px;
+    padding:calc(env(safe-area-inset-top,0px) + 10px) 148px 9px 9px;
     background:linear-gradient(var(--bg) 70%, transparent);
   }
   #back-btn{
@@ -77,10 +77,54 @@
   .crumb.current{ color:var(--accent-2); }
   .crumb-sep{ color:var(--ink-faint); font-size:10px; }
 
-  #menu-btn{
+  #top-actions{
     position:fixed; top:calc(env(safe-area-inset-top,0px) + 7px); right:7px; z-index:21;
+    display:flex; align-items:center; gap:4px;
+  }
+  #top-actions button{
     width:32px; height:32px; border-radius:8px; border:1px solid var(--line);
     background:var(--surface); color:var(--ink-dim); font-size:15px;
+    display:flex; align-items:center; justify-content:center; padding:0;
+  }
+  #top-actions button:active{ color:var(--ink); border-color:var(--accent-2); }
+  #add-btn{ color:var(--accent) !important; font-size:19px !important; line-height:1; }
+  #search-btn.on, #sort-btn.on{ color:var(--accent-2) !important; border-color:var(--accent-2) !important; }
+
+  #search-bar{
+    position:fixed; z-index:20; left:9px; right:9px;
+    top:calc(env(safe-area-inset-top,0px) + 45px);
+    display:none; align-items:center; gap:6px;
+    background:var(--surface-2); border:1px solid var(--line); border-radius:9px;
+    padding:0 8px;
+  }
+  body.searching #search-bar{ display:flex; }
+  body.searching main#board-wrap{ padding-top:calc(env(safe-area-inset-top,0px) + 90px); }
+  #search-input{
+    flex:1 1 auto; background:none; border:none; outline:none; color:var(--ink);
+    font-family:var(--font-mono); font-size:12px; padding:9px 0;
+  }
+  #search-clear{
+    flex:0 0 auto; width:24px; height:24px; border:none; background:none;
+    color:var(--ink-faint); font-size:12px; cursor:pointer; padding:0;
+  }
+  #sort-pop{
+    position:fixed; top:calc(env(safe-area-inset-top,0px) + 43px); right:7px; z-index:22;
+    background:var(--surface-2); border:1px solid var(--line); border-radius:10px;
+    padding:6px; display:flex; flex-direction:column; min-width:190px;
+    box-shadow:0 12px 28px rgba(0,0,0,.4); transform-origin:top right;
+    opacity:0; transform:translateY(-6px) scale(.96); pointer-events:none;
+    transition:opacity 160ms ease, transform 160ms cubic-bezier(.2,.9,.3,1.2);
+  }
+  #sort-pop.open{ opacity:1; transform:none; pointer-events:auto; }
+  #sort-pop button{
+    background:none; border:none; color:var(--ink); font-family:var(--font-sans);
+    font-size:13px; text-align:left; padding:9px 10px; border-radius:6px; cursor:pointer;
+  }
+  #sort-pop button:active{ background:var(--surface); }
+  #sort-pop button.on{ color:var(--accent-2); }
+  .empty-hint{
+    margin:26px 16px; text-align:center; font-family:var(--font-mono);
+    font-size:11px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.05em;
   }
   #menu-pop{
     position:fixed; top:calc(env(safe-area-inset-top,0px) + 43px); right:7px; z-index:22;
@@ -340,13 +384,34 @@
   }
   .card-foot{ margin-top:6px; font-family:var(--font-mono); font-size:9px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.04em; }
 
-  .add-card{
-    border-top:4px solid transparent; border:2px dashed var(--line);
-    align-items:center; justify-content:center; text-align:center; gap:4px;
+  /* ---- Estrellas ---- */
+  .card-stars{
+    flex:0 0 auto; font-size:9px; letter-spacing:.5px; color:#FFC94D; line-height:1;
+    white-space:nowrap;
   }
-  .add-card:active{ border-color:var(--accent); }
-  .add-plus{ font-size:20px; color:var(--accent); line-height:1; }
-  .add-label{ font-family:var(--font-mono); font-size:9.5px; color:var(--ink-dim); text-transform:uppercase; letter-spacing:.05em; }
+  .card.has-image .card-stars{ text-shadow:0 1px 3px rgba(0,0,0,.7); }
+  .detail-stars{ font-size:13px; color:#FFC94D; letter-spacing:1px; margin-left:8px; }
+  .stars-pick{ display:flex; align-items:center; gap:4px; }
+  .stars-pick .star{
+    font-size:21px; line-height:1; color:var(--ink-faint); cursor:pointer; padding:2px;
+    -webkit-user-select:none; user-select:none;
+  }
+  .stars-pick .star.on{ color:#FFC94D; }
+  .stars-pick .star-clear{
+    margin-left:6px; font-family:var(--font-mono); font-size:10px; color:var(--ink-faint);
+    background:none; border:1px solid var(--line); border-radius:6px; padding:4px 7px; cursor:pointer;
+  }
+
+  /* ---- Soltar una tarjeta ADENTRO de otra ---- */
+  .card.drop-into{
+    outline:2px solid var(--accent); outline-offset:-2px;
+    box-shadow:inset 0 0 0 100vmax rgba(230,168,90,.16);
+  }
+  .card.drop-into::after{
+    content:'⤵ ADENTRO'; position:absolute; left:0; right:0; bottom:0;
+    font-family:var(--font-mono); font-size:9px; letter-spacing:.08em; text-align:center;
+    color:#1A0F09; background:var(--accent); padding:2px 0;
+  }
 
   #toast{
     position:fixed; left:50%; bottom:calc(env(safe-area-inset-bottom,0px) + 18px); z-index:40;
@@ -475,7 +540,9 @@
   .btn-danger{ background:transparent; border-color:rgba(242,126,156,.4); color:#F27E9C; flex:0 0 auto; padding:12px 16px; }
 
   @media (max-width:400px){
-    header#crumbbar{ padding-right:38px; }
+    header#crumbbar{ padding-right:140px; }
+    #top-actions{ gap:2px; }
+    #top-actions button{ width:30px; height:30px; }
     .grid{ margin:6px 10px 12px; }
     .card{ padding:7px 8px 6px; }
     .card.size-h{ padding:5px 7px 4px; }
@@ -559,7 +626,23 @@
     <button id="back-btn" aria-label="Volver">‹</button>
     <nav id="crumbs"></nav>
   </header>
-  <button id="menu-btn" aria-label="Menú">⋮</button>
+  <div id="top-actions">
+    <button id="add-btn" aria-label="Nueva" title="Nueva">+</button>
+    <button id="search-btn" aria-label="Buscar" title="Buscar">⌕</button>
+    <button id="sort-btn" aria-label="Ordenar" title="Ordenar">⇅</button>
+    <button id="menu-btn" aria-label="Menú">⋮</button>
+  </div>
+  <div id="search-bar">
+    <input type="search" id="search-input" placeholder="Buscar en el tablero…" autocomplete="off" spellcheck="false">
+    <button id="search-clear" aria-label="Limpiar">✕</button>
+  </div>
+  <div id="sort-pop">
+    <button data-v="manual">↕ Manual (arrastrando)</button>
+    <button data-v="stars-desc">★ Más estrellas primero</button>
+    <button data-v="stars-asc">★ Menos estrellas primero</button>
+    <button data-v="title-asc">A → Z por título</button>
+    <button data-v="title-desc">Z → A por título</button>
+  </div>
   <div id="menu-pop">
     <button id="menu-bg">🎨 Fondo del tablero</button>
     <button id="menu-export">⇪ Exportar datos</button>
@@ -598,6 +681,22 @@
         <label>Color</label>
         <div class="swatches" id="f-colors"></div>
       </div>
+    </div>
+    <div class="field">
+      <label>Estrellas</label>
+      <div class="stars-pick" id="f-stars">
+        <span class="star" data-v="1">★</span>
+        <span class="star" data-v="2">★</span>
+        <span class="star" data-v="3">★</span>
+        <span class="star" data-v="4">★</span>
+        <span class="star" data-v="5">★</span>
+        <button type="button" class="star-clear" id="f-stars-clear">Sin</button>
+      </div>
+    </div>
+    <div class="field" id="f-move-field" style="display:none;">
+      <label for="f-move">Mover a</label>
+      <select id="f-move"></select>
+      <p class="hint">También podés arrastrar y sostenerla encima para meterla adentro.</p>
     </div>
     <div class="field">
       <label>Tamaño (ancho × alto)</label>
@@ -762,11 +861,12 @@
   const PALETTE = ['#4FD1C5','#FF8A5C','#C9A5F2','#FFD166','#7FB3FF','#F27E9C','#9AE6B4','#F6AD55'];
   const STORAGE_KEY = 'idea-tree';
   const SIZE_SPANS = { full:{w:2,h:2}, v:{w:1,h:2}, h:{w:2,h:1}, hh:{w:4,h:2} };
-  // Tamaño libre: cada tarjeta guarda su ancho/alto en unidades finas de la grilla.
-  // Los botones muestran multiplicadores (0.5, 1, 2, 3, 4) sobre la tarjeta base (2×2).
+  // Tamaño libre: cada item guarda su ancho/alto en unidades finas de la grilla.
+  // Los botones muestran multiplicadores (0.5, 1, 2, 3, 4) sobre la item base (2×2).
   const DIMS = [1,2,4,6,8];
   function dimOr(v, fallback){ v = parseInt(v,10); return DIMS.includes(v) ? v : fallback; }
-  const DEFAULT_SETTINGS = { bgType:'grid', bgColor:'#0E1B2B', bgImage:'', bgFit:'cover' };
+  const DEFAULT_SETTINGS = { bgType:'grid', bgColor:'#0E1B2B', bgImage:'', bgFit:'cover', sortMode:'manual' };
+  const SORT_MODES = ['manual','stars-desc','stars-asc','title-asc','title-desc'];
 
   function uid(){
     if(window.crypto && crypto.randomUUID) return crypto.randomUUID();
@@ -782,10 +882,16 @@
       color: opts.color || PALETTE[0],
       gw: dimOr(opts.gw, 2),
       gh: dimOr(opts.gh, 2),
+      stars: starsOr(opts.stars),
       image: opts.image || '',
       gallery: Array.isArray(opts.gallery) ? opts.gallery.slice() : [],
       children: opts.children || []
     };
+  }
+  // Ranking 0–5 (0 = sin puntuar)
+  function starsOr(v){
+    const n = parseInt(v, 10);
+    return (isFinite(n) && n >= 1 && n <= 5) ? n : 0;
   }
   function mergeLegacyPitch(n){
     const notes = typeof n.notes === 'string' ? n.notes : '';
@@ -803,9 +909,10 @@
       notes: mergeLegacyPitch(n),
       status: ['idea','building','live'].includes(n.status) ? n.status : 'idea',
       color: typeof n.color === 'string' ? n.color : PALETTE[0],
-      // Compatibilidad: tarjetas viejas con size ('full','v','h','hh') pasan a gw/gh
+      // Compatibilidad: items viejas con size ('full','v','h','hh') pasan a gw/gh
       gw: dimOr(n.gw, (SIZE_SPANS[n.size] || SIZE_SPANS.full).w),
       gh: dimOr(n.gh, (SIZE_SPANS[n.size] || SIZE_SPANS.full).h),
+      stars: starsOr(n.stars),
       image: typeof n.image === 'string' ? n.image : '',
       gallery: Array.isArray(n.gallery) ? n.gallery.filter(s=>typeof s==='string') : [],
       children: Array.isArray(n.children) ? n.children.map(normalizeNode).filter(Boolean) : []
@@ -817,7 +924,8 @@
       bgType: ['grid','color','image'].includes(s.bgType) ? s.bgType : DEFAULT_SETTINGS.bgType,
       bgColor: (typeof s.bgColor === 'string' && s.bgColor) ? s.bgColor : DEFAULT_SETTINGS.bgColor,
       bgImage: typeof s.bgImage === 'string' ? s.bgImage : DEFAULT_SETTINGS.bgImage,
-      bgFit: ['cover','contain','stretch'].includes(s.bgFit) ? s.bgFit : DEFAULT_SETTINGS.bgFit
+      bgFit: ['cover','contain','stretch'].includes(s.bgFit) ? s.bgFit : DEFAULT_SETTINGS.bgFit,
+      sortMode: SORT_MODES.includes(s.sortMode) ? s.sortMode : 'manual'
     };
   }
   function seedTree(){
@@ -836,6 +944,8 @@
   let selectedStatus = 'idea';
   let selectedGw = 2;
   let selectedGh = 2;
+  let selectedStars = 0;
+  let searchQuery = '';
   let selectedImages = [];   // [portada, ...resto]
   let saveTimer = null;
   let suppressClickUntil = 0;
@@ -910,6 +1020,74 @@
     return { lead:first, body:txt.slice(nl+1).replace(/^\n+/,'') };
   }
   function statusLabel(s){ return s==='building' ? 'En desarrollo' : s==='live' ? 'Activo' : 'Idea'; }
+  function starsText(n){ return n ? '★'.repeat(n) : ''; }
+
+  // ---- Búsqueda: sin acentos, sin mayúsculas ----
+  function normText(s){
+    return (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  }
+  // Una tarjeta se muestra si coincide ella o cualquier cosa que tenga adentro.
+  function matchesDeep(n, q){
+    if(normText(n.title).includes(q) || normText(n.notes).includes(q)) return true;
+    for(let i=0; i<n.children.length; i++){ if(matchesDeep(n.children[i], q)) return true; }
+    return false;
+  }
+  function sortComparator(mode){
+    if(mode === 'stars-desc') return (a,b)=> (b.stars||0) - (a.stars||0);
+    if(mode === 'stars-asc')  return (a,b)=> (a.stars||0) - (b.stars||0);
+    if(mode === 'title-asc')  return (a,b)=> a.title.localeCompare(b.title, 'es', { sensitivity:'base' });
+    if(mode === 'title-desc') return (a,b)=> b.title.localeCompare(a.title, 'es', { sensitivity:'base' });
+    return null;
+  }
+  // ¿Se puede reordenar arrastrando? Solo con orden manual y sin filtro activo.
+  function canReorder(){
+    return (appSettings.sortMode || 'manual') === 'manual' && !searchQuery;
+  }
+
+  // ---- Mover nodos de lugar dentro del tablero ----
+  function findParentOf(root, id){
+    for(let i=0; i<root.children.length; i++){
+      if(root.children[i].id === id) return root;
+      const r = findParentOf(root.children[i], id);
+      if(r) return r;
+    }
+    return null;
+  }
+  function pathTo(root, id, acc){
+    acc = acc || [root];
+    if(root.id === id) return acc;
+    for(let i=0; i<root.children.length; i++){
+      const r = pathTo(root.children[i], id, acc.concat(root.children[i]));
+      if(r) return r;
+    }
+    return null;
+  }
+  function containsNode(root, id){
+    if(root.id === id) return true;
+    return root.children.some(c=> containsNode(c, id));
+  }
+  // Mueve el nodo `id` para que sea hijo de `destId`. Devuelve true si se movió.
+  function moveNodeTo(id, destId){
+    const path = pathTo(tree, id);
+    if(!path) return false;
+    const n = path[path.length-1];
+    if(n.id === destId) return false;
+    if(containsNode(n, destId)) return false;      // no meter un padre dentro de su hijo
+    const destPath = pathTo(tree, destId);
+    if(!destPath) return false;
+    const dest = destPath[destPath.length-1];
+    const parent = findParentOf(tree, id);
+    if(!parent || parent.id === destId) return false;
+    const i = parent.children.findIndex(c=> c.id === id);
+    if(i < 0) return false;
+    parent.children.splice(i, 1);
+    dest.children.push(n);
+    // Si lo que se movió (o su padre) estaba abierto, se recalcula la ruta visible.
+    const openId = stack[stack.length-1].id;
+    const newPath = pathTo(tree, openId);
+    stack = newPath || [tree];
+    return true;
+  }
   function nextFrame(fn){ requestAnimationFrame(()=>requestAnimationFrame(fn)); }
   function debounce(fn, ms){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), ms); }; }
   function showToast(msg){
@@ -968,6 +1146,10 @@
     document.title = tree.title || "PHIL'S BORD";
     applyBackground();
     stack = [tree];
+    searchQuery = '';
+    const si = document.getElementById('search-input');
+    if(si) si.value = '';
+    if(typeof refreshSortUI === 'function') refreshSortUI();
     render();
   }
   function loadTree(){
@@ -1175,7 +1357,7 @@
             <h1 class="hero-title">${escapeHtml(current.title)}</h1>
           </div>
           <div class="detail-row">
-            <span class="pill pill-${current.status}">${statusLabel(current.status)}</span>
+            <span><span class="pill pill-${current.status}">${statusLabel(current.status)}</span>${current.stars ? `<span class="detail-stars">${starsText(current.stars)}</span>` : ''}</span>
             <button class="icon-btn" id="detail-edit">✎</button>
           </div>
           ${pitchHtml}${notesHtml}${ytHtml}${galleryHtml}`;
@@ -1185,7 +1367,7 @@
             <h1>${escapeHtml(current.title)}</h1>
             <button class="icon-btn" id="detail-edit">✎</button>
           </div>
-          <span class="pill pill-${current.status}">${statusLabel(current.status)}</span>
+          <span><span class="pill pill-${current.status}">${statusLabel(current.status)}</span>${current.stars ? `<span class="detail-stars">${starsText(current.stars)}</span>` : ''}</span>
           ${pitchHtml}${notesHtml}${ytHtml}${galleryHtml}`;
       }
       boardEl.appendChild(det);
@@ -1211,13 +1393,29 @@
       det.querySelector('#detail-edit').addEventListener('click', ()=> openSheet('edit', current));
     }
 
+    // Filtro de búsqueda + orden (no tocan el orden real guardado)
+    let list = current.children;
+    const q = normText(searchQuery);
+    if(q) list = list.filter(c=> matchesDeep(c, q));
+    const cmp = sortComparator(appSettings.sortMode || 'manual');
+    if(cmp) list = list.slice().sort(cmp);
+
+    if(!list.length){
+      const hint = document.createElement('p');
+      hint.className = 'empty-hint';
+      hint.textContent = q ? 'Sin resultados para “' + searchQuery + '”'
+                           : 'Tocá + arriba para agregar';
+      boardEl.appendChild(hint);
+      currentGridEl = null;
+      return;
+    }
+
     const grid = document.createElement('div');
     grid.className = 'grid';
 
-    current.children.forEach((child, i)=>{
+    list.forEach((child, i)=>{
       grid.appendChild(makeCard(child, i));
     });
-    grid.appendChild(makeAddCard(current.children.length));
     boardEl.appendChild(grid);
     currentGridEl = grid;
     packGrid(grid);
@@ -1242,6 +1440,7 @@
         <div class="card-top-left">
           <button class="drag-handle" aria-label="Reordenar">⠿</button>
           <span class="pill pill-${child.status}">${statusLabel(child.status)}</span>
+          ${child.stars ? `<span class="card-stars">${starsText(child.stars)}</span>` : ''}
         </div>
         <button class="edit-btn" aria-label="Editar">✎</button>
       </div>
@@ -1305,16 +1504,6 @@
       }, LONG_PRESS_MS);
     });
   }
-  function makeAddCard(index){
-    const card = document.createElement('div');
-    card.className = 'card add-card';
-    card.dataset.gw = 2; card.dataset.gh = 2;
-    card.style.setProperty('--stagger', Math.min(index*20, 200) + 'ms');
-    card.innerHTML = `<span class="add-plus">+</span><span class="add-label">Nueva</span>`;
-    card.addEventListener('click', ()=>{ if(!isAnimating) openSheet('create', null); });
-    return card;
-  }
-
   // ---- Reordering (pointer-based drag) ----
   let dragCtx = null;
   function startDrag(card, e){
@@ -1349,7 +1538,8 @@
 
     try{ card.setPointerCapture(e.pointerId); }catch(err){}
 
-    dragCtx = { card, placeholder, grid, offsetX, offsetY, moved:false, startX:e.clientX, startY:e.clientY, rafPending:false, pointerId:e.pointerId };
+    dragCtx = { card, placeholder, grid, offsetX, offsetY, moved:false, startX:e.clientX, startY:e.clientY, rafPending:false, pointerId:e.pointerId,
+                hoverEl:null, hoverTimer:null, intoEl:null };
 
     document.addEventListener('pointermove', onDragMove, { passive:false });
     document.addEventListener('pointerup', onDragEnd);
@@ -1365,13 +1555,35 @@
     card.style.top = (e.clientY - offsetY) + 'px';
 
     const target = document.elementFromPoint(e.clientX, e.clientY);
-    const targetCard = target && target.closest && target.closest('.card:not(.dragging):not(.add-card)');
-    if(targetCard && targetCard.parentElement === grid && targetCard !== placeholder){
+    const targetCard = target && target.closest && target.closest('.card:not(.dragging)');
+    const valid = targetCard && targetCard.parentElement === grid && targetCard !== placeholder;
+
+    // Sostener quieto encima de otra tarjeta = meterla adentro
+    if(!valid || targetCard !== dragCtx.hoverEl){
+      clearIntoTarget();
+      dragCtx.hoverEl = valid ? targetCard : null;
+      if(valid){
+        dragCtx.hoverTimer = setTimeout(()=>{
+          if(!dragCtx || dragCtx.hoverEl !== targetCard) return;
+          dragCtx.intoEl = targetCard;
+          targetCard.classList.add('drop-into');
+          if(navigator.vibrate){ try{ navigator.vibrate(14); }catch(err){} }
+        }, DROP_INTO_MS);
+      }
+    }
+
+    if(valid && !dragCtx.intoEl && canReorder()){
       const after = !!(targetCard.compareDocumentPosition(placeholder) & Node.DOCUMENT_POSITION_FOLLOWING);
       if(after) grid.insertBefore(placeholder, targetCard);
       else grid.insertBefore(placeholder, targetCard.nextSibling);
       scheduleRepack();
     }
+  }
+  const DROP_INTO_MS = 520;
+  function clearIntoTarget(){
+    if(!dragCtx) return;
+    clearTimeout(dragCtx.hoverTimer); dragCtx.hoverTimer = null;
+    if(dragCtx.intoEl){ dragCtx.intoEl.classList.remove('drop-into'); dragCtx.intoEl = null; }
   }
   function scheduleRepack(){
     if(!dragCtx || dragCtx.rafPending) return;
@@ -1387,22 +1599,40 @@
     document.body.classList.remove('jp-dragging');
     if(!dragCtx) return;
     const { card, placeholder, grid, moved, pointerId } = dragCtx;
+    const intoEl = dragCtx.intoEl;
+    clearTimeout(dragCtx.hoverTimer);
+    if(intoEl) intoEl.classList.remove('drop-into');
     try{ card.releasePointerCapture(pointerId); }catch(err){}
     grid.insertBefore(card, placeholder);
     grid.removeChild(placeholder);
     card.style.position = ''; card.style.left = ''; card.style.top = '';
     card.style.width = ''; card.style.height = ''; card.style.zIndex = ''; card.style.pointerEvents = '';
     card.classList.remove('dragging');
+    dragCtx = null;
 
+    // 1) Se soltó ADENTRO de otra tarjeta → cambia de nivel
+    if(intoEl && intoEl.dataset.id !== card.dataset.id){
+      suppressClickUntil = Date.now() + 300;
+      if(moveNodeTo(card.dataset.id, intoEl.dataset.id)){
+        persist();
+        render();
+        showToast('Movido adentro de “' + intoEl.querySelector('.card-title').textContent + '”');
+        return;
+      }
+    }
+    // 2) Reordenar en el mismo nivel (solo con orden manual y sin filtro)
     if(moved){
-      const current = stack[stack.length-1];
-      const order = [...grid.querySelectorAll('.card:not(.add-card)')].map(el=>el.dataset.id);
-      current.children.sort((a,b)=> order.indexOf(a.id) - order.indexOf(b.id));
-      persist();
+      if(canReorder()){
+        const current = stack[stack.length-1];
+        const order = [...grid.querySelectorAll('.card')].map(el=>el.dataset.id);
+        current.children.sort((a,b)=> order.indexOf(a.id) - order.indexOf(b.id));
+        persist();
+      } else {
+        showToast('Para reordenar a mano, quitá el filtro y poné orden Manual.');
+      }
       suppressClickUntil = Date.now() + 300;
     }
     packGrid(grid);
-    dragCtx = null;
   }
 
   function setOrigin(x, y){
@@ -1736,6 +1966,9 @@
   const fGw = document.getElementById('f-gw');
   const fGh = document.getElementById('f-gh');
   const fColors = document.getElementById('f-colors');
+  const fStars = document.getElementById('f-stars');
+  const fMove = document.getElementById('f-move');
+  const fMoveField = document.getElementById('f-move-field');
   const fDelete = document.getElementById('f-delete');
   const sheetTitle = document.getElementById('sheet-title');
   const fGalleryClear = document.getElementById('f-gallery-clear');
@@ -1763,6 +1996,36 @@
   });
   function refreshStatus(){
     [...fStatus.children].forEach(opt=> opt.classList.toggle('selected', opt.dataset.v === selectedStatus));
+  }
+  // ---- Estrellas (0 a 5) ----
+  fStars.addEventListener('click', (e)=>{
+    const s = e.target.closest('.star');
+    if(!s) return;
+    const v = starsOr(s.dataset.v);
+    selectedStars = (v === selectedStars) ? 0 : v;   // tocar la misma estrella la saca
+    refreshStars();
+  });
+  document.getElementById('f-stars-clear').addEventListener('click', ()=>{ selectedStars = 0; refreshStars(); });
+  function refreshStars(){
+    fStars.querySelectorAll('.star').forEach(s=> s.classList.toggle('on', +s.dataset.v <= selectedStars));
+  }
+  // ---- "Mover a": lista de destinos posibles (todo menos la propia rama) ----
+  function fillMoveOptions(target){
+    const parent = findParentOf(tree, target.id);
+    fMove.innerHTML = '';
+    const opts = [];
+    (function walk(n, depth){
+      if(n.id === target.id) return;    // ni él mismo ni nada de adentro suyo
+      opts.push({ id:n.id, label:'· '.repeat(depth) + (n.title || 'Tablero') });
+      n.children.forEach(c=> walk(c, depth+1));
+    })(tree, 0);
+    opts.forEach(o=>{
+      const el = document.createElement('option');
+      el.value = o.id; el.textContent = o.label;
+      if(parent && o.id === parent.id) el.textContent += '  (acá está)';
+      fMove.appendChild(el);
+    });
+    if(parent) fMove.value = parent.id;
   }
   // Los botones escriben directamente el ancho/alto (data-gw / data-gh) de la tarjeta.
   fGw.addEventListener('click', (e)=>{
@@ -1911,21 +2174,26 @@
       selectedStatus = targetNode.status;
       selectedGw = dimOr(targetNode.gw, 2);
       selectedGh = dimOr(targetNode.gh, 2);
+      selectedStars = starsOr(targetNode.stars);
       selectedImages = (targetNode.image ? [targetNode.image] : [])
         .concat(Array.isArray(targetNode.gallery) ? targetNode.gallery : []);
       fDelete.style.display = (targetNode !== tree) ? 'block' : 'none';
+      if(targetNode !== tree){ fMoveField.style.display = ''; fillMoveOptions(targetNode); }
+      else { fMoveField.style.display = 'none'; }
     } else {
       sheetTitle.textContent = 'Nueva';
       fTitle.value = ''; fNotes.value = '';
       selectedColor = PALETTE[Math.floor(Math.random()*PALETTE.length)];
       selectedStatus = 'idea';
       selectedGw = 2; selectedGh = 2;
+      selectedStars = 0;
       selectedImages = [];
       fDelete.style.display = 'none';
+      fMoveField.style.display = 'none';
     }
     fGalleryUrl.value = '';
     renderImageList();
-    refreshSwatches(); refreshStatus(); refreshSize();
+    refreshSwatches(); refreshStatus(); refreshSize(); refreshStars();
     sheetOverlay.classList.add('open');
     sheetEl.classList.add('open');
     setTimeout(()=> fTitle.focus(), 260);
@@ -1962,7 +2230,7 @@
     const title = fTitle.value.trim();
     if(!title){ fTitle.focus(); return; }
     if(sheetMode === 'create'){
-      const n = node({ title, notes:fNotes.value.trim(), status:selectedStatus, color:selectedColor, gw:selectedGw, gh:selectedGh, image:selectedImages[0] || '', gallery:selectedImages.slice(1) });
+      const n = node({ title, notes:fNotes.value.trim(), status:selectedStatus, color:selectedColor, gw:selectedGw, gh:selectedGh, stars:selectedStars, image:selectedImages[0] || '', gallery:selectedImages.slice(1) });
       stack[stack.length-1].children.push(n);
     } else if(sheetMode === 'edit' && editingTarget){
       editingTarget.title = title;
@@ -1971,8 +2239,16 @@
       editingTarget.color = selectedColor;
       editingTarget.gw = selectedGw;
       editingTarget.gh = selectedGh;
+      editingTarget.stars = selectedStars;
       editingTarget.image = selectedImages[0] || '';
       editingTarget.gallery = selectedImages.slice(1);
+      // Cambio de lugar desde el selector "Mover a"
+      if(fMoveField.style.display !== 'none' && fMove.value){
+        const parent = findParentOf(tree, editingTarget.id);
+        if(parent && fMove.value !== parent.id && moveNodeTo(editingTarget.id, fMove.value)){
+          showToast('Tarjeta movida de lugar.');
+        }
+      }
     }
     persist();
     closeSheet();
@@ -2324,9 +2600,57 @@
   document.getElementById('about-close').addEventListener('click', closeAbout);
 
   // ---- Menu ----
-  menuBtn.addEventListener('click', ()=> menuPop.classList.toggle('open'));
+  menuBtn.addEventListener('click', ()=>{ sortPop.classList.remove('open'); menuPop.classList.toggle('open'); });
+
+  // ---- "+" arriba: crea una tarjeta en el nivel abierto ----
+  document.getElementById('add-btn').addEventListener('click', ()=>{
+    if(!isAnimating) openSheet('create', null);
+  });
+
+  // ---- Buscador ----
+  const searchBtn = document.getElementById('search-btn');
+  const searchInput = document.getElementById('search-input');
+  const applySearch = debounce(()=>{
+    searchQuery = searchInput.value.trim();
+    render();
+  }, 140);
+  searchBtn.addEventListener('click', ()=>{
+    const on = document.body.classList.toggle('searching');
+    searchBtn.classList.toggle('on', on);
+    if(on){ searchInput.focus(); }
+    else if(searchQuery){ searchQuery = ''; searchInput.value = ''; render(); }
+  });
+  searchInput.addEventListener('input', applySearch);
+  searchInput.addEventListener('keydown', (e)=>{ if(e.key === 'Escape') searchBtn.click(); });
+  document.getElementById('search-clear').addEventListener('click', ()=>{
+    searchInput.value = ''; searchQuery = ''; render(); searchInput.focus();
+  });
+
+  // ---- Orden (estrellas / título) ----
+  const sortPop = document.getElementById('sort-pop');
+  const sortBtn = document.getElementById('sort-btn');
+  function refreshSortUI(){
+    const mode = appSettings.sortMode || 'manual';
+    sortPop.querySelectorAll('button').forEach(b=> b.classList.toggle('on', b.dataset.v === mode));
+    sortBtn.classList.toggle('on', mode !== 'manual');
+  }
+  sortBtn.addEventListener('click', ()=>{
+    menuPop.classList.remove('open'); boardPop.classList.remove('open');
+    refreshSortUI();
+    sortPop.classList.toggle('open');
+  });
+  sortPop.addEventListener('click', (e)=>{
+    const b = e.target.closest('button'); if(!b) return;
+    appSettings.sortMode = SORT_MODES.includes(b.dataset.v) ? b.dataset.v : 'manual';
+    sortPop.classList.remove('open');
+    refreshSortUI();
+    persist();
+    render();
+  });
+
   document.addEventListener('click', (e)=>{
     if(!menuPop.contains(e.target) && e.target !== menuBtn) menuPop.classList.remove('open');
+    if(!sortPop.contains(e.target) && e.target !== sortBtn) sortPop.classList.remove('open');
     if(!boardPop.contains(e.target)) boardPop.classList.remove('open');
   });
   document.getElementById('menu-bg').addEventListener('click', ()=>{
