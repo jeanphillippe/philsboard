@@ -422,19 +422,41 @@
   }
   #toast.show{ opacity:1; transform:translate(-50%,0); }
 
-  #sheet-overlay, #io-overlay, #bg-overlay, #about-overlay, #crop-overlay{
+  #sheet-overlay, #io-overlay, #bg-overlay, #about-overlay, #crop-overlay, #img-overlay{
     position:fixed; inset:0; background:rgba(4,10,18,.55); z-index:29;
     opacity:0; pointer-events:none; transition:opacity 220ms;
   }
-  #sheet-overlay.open, #io-overlay.open, #bg-overlay.open, #about-overlay.open, #crop-overlay.open{ opacity:1; pointer-events:auto; }
-  #sheet, #io-sheet, #bg-sheet, #about-sheet, #crop-sheet{
+  #sheet-overlay.open, #io-overlay.open, #bg-overlay.open, #about-overlay.open, #crop-overlay.open, #img-overlay.open{ opacity:1; pointer-events:auto; }
+  #sheet, #io-sheet, #bg-sheet, #about-sheet, #crop-sheet, #img-sheet{
     position:fixed; left:0; right:0; bottom:0; z-index:30; max-height:88vh; overflow-y:auto;
     background:var(--surface-2); border:1px solid var(--line); border-bottom:none;
     border-radius:16px 16px 0 0; padding:14px 16px calc(env(safe-area-inset-bottom,0px) + 18px);
     transform:translateY(105%); transition:transform 260ms cubic-bezier(.22,.85,.32,1);
     box-shadow:0 -12px 32px rgba(0,0,0,.4);
   }
-  #sheet.open, #io-sheet.open, #bg-sheet.open, #about-sheet.open, #crop-sheet.open{ transform:translateY(0); }
+  #sheet.open, #io-sheet.open, #bg-sheet.open, #about-sheet.open, #crop-sheet.open, #img-sheet.open{ transform:translateY(0); }
+
+  /* ---- Listado de imágenes más pesadas ---- */
+  .imgw-row{
+    display:flex; align-items:center; gap:9px; padding:8px 0; border-top:1px solid var(--line);
+  }
+  .imgw-row:first-child{ border-top:none; }
+  .imgw-thumb{
+    flex:0 0 auto; width:42px; height:42px; border-radius:7px; border:1px solid var(--line);
+    background-size:cover; background-position:center; background-color:var(--surface);
+  }
+  .imgw-meta{ flex:1 1 auto; min-width:0; }
+  .imgw-name{
+    font-size:12px; color:var(--ink-dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .imgw-size{ font-family:var(--font-mono); font-size:10px; color:var(--ink-faint); margin-top:2px; }
+  .imgw-acts{ flex:0 0 auto; display:flex; gap:4px; }
+  .imgw-acts button{
+    font-family:var(--font-mono); font-size:10px; padding:6px 7px; border-radius:7px;
+    border:1px solid var(--line); background:var(--surface); color:var(--ink-dim); cursor:pointer;
+  }
+  .imgw-acts button.danger{ color:#F27E9C; }
+  .imgw-total{ font-family:var(--font-mono); font-size:11px; color:var(--ink-faint); margin:0 0 10px; }
   #crop-overlay{ z-index:33; }
   #crop-sheet{ z-index:34; }
   #io-export-text, #io-import-text{ min-height:130px; font-family:var(--font-mono); font-size:11px; line-height:1.4; }
@@ -514,6 +536,26 @@
     .field-row{ display:flex; gap:12px; align-items:flex-start; }
     .field-row > .field{ flex:1 1 0; min-width:0; }
   }
+  /* Color + estrellas + estado + mover a: siempre en una sola línea */
+  /* Si la pantalla es muy angosta la fila se desliza en horizontal en vez de cortarse. */
+  .field-row.one-line{
+    display:flex; gap:8px; align-items:flex-start; flex-wrap:nowrap;
+    overflow-x:auto; -webkit-overflow-scrolling:touch;
+  }
+  .field-row.one-line > .field{ margin-bottom:8px; }
+  .field-row.one-line > .f-color{ flex:0 0 auto; }
+  .field-row.one-line > .f-stars-col{ flex:0 0 auto; }
+  .field-row.one-line > .f-status-col{ flex:1 1 auto; min-width:168px; }
+  .field-row.one-line > .f-move-col{ flex:1 1 auto; min-width:112px; }
+  #sheet .field-row.one-line .status-opt{ white-space:nowrap; }
+  .field-row.one-line .swatches{ gap:5px; max-width:70px; }
+  #sheet .field-row.one-line .swatch{ width:18px; height:18px; }
+  .field-row.one-line .stars-pick{ gap:1px; }
+  .field-row.one-line .stars-pick .star{ font-size:16px; padding:1px; }
+  .field-row.one-line .stars-pick .star-clear{ margin-left:3px; font-size:9px; padding:3px 4px; }
+  .field-row.one-line .status-row{ gap:4px; }
+  #sheet .field-row.one-line .status-opt{ padding:6px 2px; font-size:9px; }
+  .field-row.one-line select{ font-size:12px; padding:7px 6px; }
   .dim-row{ display:flex; gap:5px; align-items:center; }
   .dim-row + .dim-row{ margin-top:5px; }
   .dim-label{
@@ -668,8 +710,23 @@
       <label for="f-notes">Notas</label>
       <textarea id="f-notes" placeholder="Un renglón por línea. La primera se usa como bajada."></textarea>
     </div>
-    <div class="field-row">
-      <div class="field">
+    <div class="field-row one-line">
+      <div class="field f-color">
+        <label>Color</label>
+        <div class="swatches" id="f-colors"></div>
+      </div>
+      <div class="field f-stars-col">
+        <label>Estrellas</label>
+        <div class="stars-pick" id="f-stars">
+          <span class="star" data-v="1">★</span>
+          <span class="star" data-v="2">★</span>
+          <span class="star" data-v="3">★</span>
+          <span class="star" data-v="4">★</span>
+          <span class="star" data-v="5">★</span>
+          <button type="button" class="star-clear" id="f-stars-clear">Sin</button>
+        </div>
+      </div>
+      <div class="field f-status-col">
         <label>Estado</label>
         <div class="status-row" id="f-status">
           <div class="status-opt" data-v="idea">Idea</div>
@@ -677,26 +734,10 @@
           <div class="status-opt" data-v="live">Activo</div>
         </div>
       </div>
-      <div class="field">
-        <label>Color</label>
-        <div class="swatches" id="f-colors"></div>
+      <div class="field f-move-col" id="f-move-field" style="display:none;">
+        <label for="f-move">Mover a</label>
+        <select id="f-move"></select>
       </div>
-    </div>
-    <div class="field">
-      <label>Estrellas</label>
-      <div class="stars-pick" id="f-stars">
-        <span class="star" data-v="1">★</span>
-        <span class="star" data-v="2">★</span>
-        <span class="star" data-v="3">★</span>
-        <span class="star" data-v="4">★</span>
-        <span class="star" data-v="5">★</span>
-        <button type="button" class="star-clear" id="f-stars-clear">Sin</button>
-      </div>
-    </div>
-    <div class="field" id="f-move-field" style="display:none;">
-      <label for="f-move">Mover a</label>
-      <select id="f-move"></select>
-      <p class="hint">También podés arrastrar y sostener encima de otra para meterla adentro.</p>
     </div>
     <div class="field">
       <label>Tamaño (ancho × alto)</label>
@@ -823,6 +864,19 @@
     <p class="about-text">PHIL'S BORD nace de la búsqueda de una pizarra simple para volcar ideas y contenido de forma fácil e intuitiva: tocá una pieza para profundizar, volvé atrás para alejarte. Todo se guarda en este dispositivo y vos sos dueño o dueña del archivo que exportás o importás.</p>
     <div class="sheet-actions">
       <button class="btn btn-primary" id="about-close" style="flex:1;">Cerrar</button>
+    </div>
+  </div>
+
+  <div id="img-overlay"></div>
+  <div id="img-sheet">
+    <div class="sheet-handle"></div>
+    <p class="sheet-title">Imágenes más pesadas</p>
+    <p class="imgw-total" id="imgw-total"></p>
+    <div id="imgw-list"></div>
+    <p class="hint">Redimensionar: G = 1100px · M = 800px · C = 560px (lado más largo).</p>
+    <div class="sheet-actions">
+      <button class="btn btn-ghost" id="imgw-all">Optimizar todas</button>
+      <button class="btn btn-primary" id="imgw-close" style="flex:1;">Cerrar</button>
     </div>
   </div>
 
@@ -2111,16 +2165,20 @@
   function refreshStars(){
     fStars.querySelectorAll('.star').forEach(s=> s.classList.toggle('on', +s.dataset.v <= selectedStars));
   }
-  // ---- "Mover a": lista de destinos posibles (todo menos la propia rama) ----
+  // ---- "Mover a": solo niveles SUPERIORES al actual ----
+  // Se listan los ancestros de la tarjeta (de la raíz hasta su contenedor actual),
+  // así una tarjeta solo puede subir de nivel, nunca meterse en una rama hermana.
   function fillMoveOptions(target){
     const parent = findParentOf(tree, target.id);
     fMove.innerHTML = '';
     const opts = [];
-    (function walk(n, depth){
-      if(n.id === target.id) return;    // ni él mismo ni nada de adentro suyo
-      opts.push({ id:n.id, label:'· '.repeat(depth) + (n.title || 'Tablero') });
-      n.children.forEach(c=> walk(c, depth+1));
-    })(tree, 0);
+    (function walk(n, chain){
+      if(n.id === target.id){
+        chain.forEach((a, i)=> opts.push({ id:a.id, label:'· '.repeat(i) + (a.title || 'Tablero') }));
+        return true;
+      }
+      return (n.children || []).some(c=> walk(c, chain.concat(n)));
+    })(tree, []);
     opts.forEach(o=>{
       const el = document.createElement('option');
       el.value = o.id; el.textContent = o.label;
@@ -2280,7 +2338,11 @@
       selectedImages = (targetNode.image ? [targetNode.image] : [])
         .concat(Array.isArray(targetNode.gallery) ? targetNode.gallery : []);
       fDelete.style.display = (targetNode !== tree) ? 'block' : 'none';
-      if(targetNode !== tree){ fMoveField.style.display = ''; fillMoveOptions(targetNode); }
+      if(targetNode !== tree){
+        fillMoveOptions(targetNode);
+        // Con un solo destino posible (ya está en el nivel más alto) no tiene sentido mostrarlo.
+        fMoveField.style.display = fMove.options.length > 1 ? '' : 'none';
+      }
       else { fMoveField.style.display = 'none'; }
     } else {
       sheetTitle.textContent = 'Nueva';
@@ -2348,7 +2410,7 @@
       if(fMoveField.style.display !== 'none' && fMove.value){
         const parent = findParentOf(tree, editingTarget.id);
         if(parent && fMove.value !== parent.id && moveNodeTo(editingTarget.id, fMove.value)){
-          showToast('Movida de lugar.');
+          showToast('Tarjeta movida de lugar.');
         }
       }
     }
@@ -2767,10 +2829,14 @@
     menuPop.classList.remove('open');
     openIOSheet('import');
   });
+  // Abre el listado de las imágenes más pesadas (ahí se redimensionan o se borran).
+  document.getElementById('menu-optimize').addEventListener('click', ()=>{
+    menuPop.classList.remove('open');
+    openImgSheet();
+  });
   // Recomprime todas las imágenes ya guardadas con los parámetros actuales
   // (tope 1600px + WebP). Útil para bajar el peso de contenido cargado antes.
-  document.getElementById('menu-optimize').addEventListener('click', async ()=>{
-    menuPop.classList.remove('open');
+  async function optimizeAllImages(){
     showToast('Optimizando imágenes…');
     syncActiveBoard();
     const before = JSON.stringify({ boards }).length;
@@ -2795,6 +2861,121 @@
     render();
     const mb = x=> (x/1048576).toFixed(2).replace('.', ',');
     showToast('Listo: ' + mb(before) + ' MB → ' + mb(after) + ' MB.');
+  }
+
+  // ---- Panel: las 10 imágenes más pesadas, con redimensionar o eliminar ----
+  const imgOverlay = document.getElementById('img-overlay');
+  const imgSheetEl = document.getElementById('img-sheet');
+  const imgwList = document.getElementById('imgw-list');
+  const imgwTotal = document.getElementById('imgw-total');
+  const IMG_STEPS = [['G', 1100, 0.6], ['M', 800, 0.52], ['C', 560, 0.45]];
+  function dataUrlBytes(s){
+    if(typeof s !== 'string') return 0;
+    if(s.indexOf('data:') !== 0) return s.length;
+    return Math.round((s.length - s.indexOf(',') - 1) * 3 / 4);
+  }
+  function fmtSize(b){
+    return b >= 1048576 ? (b/1048576).toFixed(2).replace('.', ',') + ' MB'
+                        : Math.max(1, Math.round(b/1024)) + ' KB';
+  }
+  function collectImages(){
+    const out = [];
+    boards.forEach((b, bi)=>{
+      const tag = boards.length > 1 ? 'T' + (bi+1) + ' · ' : '';
+      const walk = n => {
+        const name = n.title || 'Sin título';
+        if(n.image) out.push({
+          src:n.image, label:tag + name + ' · portada',
+          set:v=>{ n.image = v; },
+          del:()=>{ n.image = (Array.isArray(n.gallery) && n.gallery.length) ? n.gallery.shift() : ''; }
+        });
+        if(Array.isArray(n.gallery)) n.gallery.forEach((g, gi)=> out.push({
+          src:g, label:tag + name + ' · imagen ' + (gi+2),
+          set:v=>{ n.gallery[gi] = v; },
+          del:()=>{ n.gallery.splice(gi, 1); }
+        }));
+        (n.children || []).forEach(walk);
+      };
+      walk(b.tree);
+      if(b.settings && b.settings.bgImage) out.push({
+        src:b.settings.bgImage, label:tag + 'Fondo del tablero',
+        set:v=>{ b.settings.bgImage = v; },
+        del:()=>{ b.settings.bgImage = ''; if(b.settings.bgType === 'image') b.settings.bgType = 'grid'; }
+      });
+    });
+    out.forEach(e=> e.bytes = dataUrlBytes(e.src));
+    return out;
+  }
+  function renderImgSheet(){
+    syncActiveBoard();
+    const all = collectImages().sort((a, b)=> b.bytes - a.bytes);
+    const total = all.reduce((s, e)=> s + e.bytes, 0);
+    imgwTotal.textContent = all.length
+      ? all.length + (all.length === 1 ? ' imagen · ' : ' imágenes · ') + fmtSize(total) + ' en total'
+      : '';
+    imgwList.innerHTML = '';
+    if(!all.length){ imgwList.innerHTML = '<p class="hint">No hay imágenes guardadas.</p>'; return; }
+    all.slice(0, 10).forEach(e=>{
+      const row = document.createElement('div');
+      row.className = 'imgw-row';
+      const th = document.createElement('div');
+      th.className = 'imgw-thumb';
+      th.style.backgroundImage = 'url("' + e.src.replace(/"/g, '') + '")';
+      const meta = document.createElement('div');
+      meta.className = 'imgw-meta';
+      const nm = document.createElement('div');
+      nm.className = 'imgw-name'; nm.textContent = e.label;
+      const sz = document.createElement('div');
+      sz.className = 'imgw-size';
+      const isData = e.src.indexOf('data:') === 0;
+      sz.textContent = isData ? fmtSize(e.bytes) : 'link externo (no ocupa espacio)';
+      meta.appendChild(nm); meta.appendChild(sz);
+      const acts = document.createElement('div');
+      acts.className = 'imgw-acts';
+      if(isData){
+        IMG_STEPS.forEach(step=>{
+          const btn = document.createElement('button');
+          btn.type = 'button'; btn.textContent = step[0];
+          btn.title = 'Redimensionar a ' + step[1] + 'px';
+          btn.addEventListener('click', async ()=>{
+            btn.disabled = true;
+            const before = e.bytes;
+            const url = await recompressDataUrl(e.src, step[1], step[2]);
+            if(url === e.src){ btn.disabled = false; showToast('Ya es más liviana que ese tamaño.'); return; }
+            e.set(url);
+            applyBackground(); persist(); render(); renderImgSheet();
+            showToast('Redimensionada: ' + fmtSize(before) + ' → ' + fmtSize(dataUrlBytes(url)) + '.');
+          });
+          acts.appendChild(btn);
+        });
+      }
+      const del = document.createElement('button');
+      del.type = 'button'; del.className = 'danger'; del.textContent = '🗑';
+      del.title = 'Eliminar esta imagen';
+      del.addEventListener('click', ()=>{
+        e.del();
+        applyBackground(); persist(); render(); renderImgSheet();
+        showToast('Imagen eliminada.');
+      });
+      acts.appendChild(del);
+      row.appendChild(th); row.appendChild(meta); row.appendChild(acts);
+      imgwList.appendChild(row);
+    });
+  }
+  function openImgSheet(){
+    renderImgSheet();
+    imgOverlay.classList.add('open');
+    imgSheetEl.classList.add('open');
+  }
+  function closeImgSheet(){
+    imgOverlay.classList.remove('open');
+    imgSheetEl.classList.remove('open');
+  }
+  imgOverlay.addEventListener('click', closeImgSheet);
+  document.getElementById('imgw-close').addEventListener('click', closeImgSheet);
+  document.getElementById('imgw-all').addEventListener('click', async ()=>{
+    await optimizeAllImages();
+    renderImgSheet();
   });
 
   document.getElementById('menu-clear').addEventListener('click', ()=>{
