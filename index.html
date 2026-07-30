@@ -1206,10 +1206,58 @@
     if(typeof refreshSortUI === 'function') refreshSortUI();
     render();
   }
-  function loadTree(){
+  // ---- Guardado comprimido ----
+  // localStorage guarda texto en UTF-16: cada carácter cuesta 2 bytes del cupo.
+  // Una imagen en base64 pagaba doble (×1,33 del base64 × 2 del UTF-16 = ×2,67
+  // su tamaño real). Acá el JSON se comprime con gzip y los bytes se empaquetan
+  // a 15 bits por carácter (nunca se toca el rango de surrogates 0xD800+), así
+  // el costo baja a ~×1,07: entra ~2,5 veces más contenido en el mismo espacio.
+  const PACK_PREFIX = 'GZ15:';
+  function packBits15(bytes){
+    let out = '', acc = 0, bits = 0;
+    const chunk = [];
+    for(let i = 0; i < bytes.length; i++){
+      acc = (acc << 8) | bytes[i]; bits += 8;
+      while(bits >= 15){ bits -= 15; chunk.push((acc >>> bits) & 0x7FFF); acc &= (1 << bits) - 1; }
+      if(chunk.length >= 8192){ out += String.fromCharCode.apply(null, chunk); chunk.length = 0; }
+    }
+    if(bits > 0) chunk.push((acc << (15 - bits)) & 0x7FFF);
+    if(chunk.length) out += String.fromCharCode.apply(null, chunk);
+    return out;
+  }
+  function unpackBits15(str, len){
+    const out = new Uint8Array(len);
+    let acc = 0, bits = 0, i = 0;
+    for(let c = 0; c < str.length && i < len; c++){
+      acc = (acc << 15) | str.charCodeAt(c); bits += 15;
+      while(bits >= 8 && i < len){ bits -= 8; out[i++] = (acc >>> bits) & 0xFF; acc &= (1 << bits) - 1; }
+    }
+    return out;
+  }
+  async function storagePack(text){
+    const gz = await gzipBytes(text);           // null si el navegador no tiene CompressionStream
+    if(!gz) return null;
+    return PACK_PREFIX + gz.length.toString(36) + ':' + packBits15(gz);
+  }
+  async function storageUnpack(raw){
+    const sep = raw.indexOf(':', PACK_PREFIX.length);
+    const len = parseInt(raw.slice(PACK_PREFIX.length, sep), 36);
+    return await gunzipText(unpackBits15(raw.slice(sep + 1), len));
+  }
+
+  async function loadTree(){
     const raw = storageGet(STORAGE_KEY);
     let parsed = null;
-    if(raw){ try{ parsed = JSON.parse(raw); }catch(e){ parsed = null; } }
+    if(raw && raw.indexOf(PACK_PREFIX) === 0){
+      // Tablero provisorio mientras se descomprime, para que nada quede en null.
+      boards = [normalizeBoard(null)]; activeBoardIdx = 0; activateBoard(0);
+      let text = null;
+      try{ text = await storageUnpack(raw); }
+      catch(e){ showToast('No pude leer el guardado de este dispositivo.'); return; }
+      try{ parsed = JSON.parse(text); }catch(e){ parsed = null; }
+    } else if(raw){
+      try{ parsed = JSON.parse(raw); }catch(e){ parsed = null; }   // formato viejo: JSON en claro
+    }
     if(parsed && Array.isArray(parsed.boards) && parsed.boards.length){
       boards = parsed.boards.map(normalizeBoard);
       activeBoardIdx = parseInt(parsed.active, 10) || 0;
@@ -1228,8 +1276,8 @@
   }
   function persist(){
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(()=>{
-      if(!trySaveNow()) fitToStorage();
+    saveTimer = setTimeout(async ()=>{
+      if(!await trySaveNow()) fitToStorage();
     }, 350);
   }
 
@@ -1239,9 +1287,15 @@
   // más agresivos y, solo como último recurso, se van soltando imágenes:
   // primero las de las tarjetas que tienen VARIAS, después las portadas sueltas.
   let fittingStorage = false;
-  function trySaveNow(){
+  let saveSeq = 0;
+  async function trySaveNow(){
     syncActiveBoard();
-    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify({ boards, active: activeBoardIdx })); return true; }
+    const text = JSON.stringify({ boards, active: activeBoardIdx });
+    const seq = ++saveSeq;
+    let payload = null;
+    try{ payload = await storagePack(text); }catch(e){ payload = null; }
+    if(seq !== saveSeq) return true;    // hay un guardado más nuevo en camino: este se descarta
+    try{ localStorage.setItem(STORAGE_KEY, payload || text); return true; }
     catch(e){ return false; }
   }
   function allNodes(){
@@ -1315,7 +1369,7 @@
     try{
       for(const [side, q] of [[1100, 0.6], [800, 0.52], [560, 0.45]]){
         await recompressAll(side, q);
-        if(trySaveNow()){
+        if(await trySaveNow()){
           showToast('Guardado: comprimí las imágenes para que entre todo.');
           render();
           return;
@@ -1324,7 +1378,7 @@
       let dropped = 0;
       while(dropOneImage()){
         dropped++;
-        if(trySaveNow()){
+        if(await trySaveNow()){
           showToast('Guardado, pero tuve que quitar ' + dropped + (dropped === 1 ? ' imagen.' : ' imágenes.'));
           render();
           return;
