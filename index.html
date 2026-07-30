@@ -696,7 +696,7 @@
     <div class="field" id="f-move-field" style="display:none;">
       <label for="f-move">Mover a</label>
       <select id="f-move"></select>
-      <p class="hint">También podés arrastrar y sostenerla encima para meterla adentro.</p>
+      <p class="hint">También podés arrastrar y sostener encima de otra para meterla adentro.</p>
     </div>
     <div class="field">
       <label>Tamaño (ancho × alto)</label>
@@ -861,8 +861,8 @@
   const PALETTE = ['#4FD1C5','#FF8A5C','#C9A5F2','#FFD166','#7FB3FF','#F27E9C','#9AE6B4','#F6AD55'];
   const STORAGE_KEY = 'idea-tree';
   const SIZE_SPANS = { full:{w:2,h:2}, v:{w:1,h:2}, h:{w:2,h:1}, hh:{w:4,h:2} };
-  // Tamaño libre: cada item guarda su ancho/alto en unidades finas de la grilla.
-  // Los botones muestran multiplicadores (0.5, 1, 2, 3, 4) sobre la item base (2×2).
+  // Tamaño libre: cada tarjeta guarda su ancho/alto en unidades finas de la grilla.
+  // Los botones muestran multiplicadores (0.5, 1, 2, 3, 4) sobre la tarjeta base (2×2).
   const DIMS = [1,2,4,6,8];
   function dimOr(v, fallback){ v = parseInt(v,10); return DIMS.includes(v) ? v : fallback; }
   const DEFAULT_SETTINGS = { bgType:'grid', bgColor:'#0E1B2B', bgImage:'', bgFit:'cover', sortMode:'manual' };
@@ -909,7 +909,7 @@
       notes: mergeLegacyPitch(n),
       status: ['idea','building','live'].includes(n.status) ? n.status : 'idea',
       color: typeof n.color === 'string' ? n.color : PALETTE[0],
-      // Compatibilidad: items viejas con size ('full','v','h','hh') pasan a gw/gh
+      // Compatibilidad: tarjetas viejas con size ('full','v','h','hh') pasan a gw/gh
       gw: dimOr(n.gw, (SIZE_SPANS[n.size] || SIZE_SPANS.full).w),
       gh: dimOr(n.gh, (SIZE_SPANS[n.size] || SIZE_SPANS.full).h),
       stars: starsOr(n.stars),
@@ -1175,9 +1175,111 @@
   function persist(){
     clearTimeout(saveTimer);
     saveTimer = setTimeout(()=>{
-      syncActiveBoard();
-      storageSet(STORAGE_KEY, JSON.stringify({ boards, active: activeBoardIdx }));
+      if(!trySaveNow()) fitToStorage();
     }, 350);
+  }
+
+  // ---- Ajuste automático al espacio disponible (localStorage ~5MB) ----
+  // Si el guardado falla por falta de espacio (típico al importar un .brd con
+  // muchas fotos), primero se recomprimen todas las imágenes en pasos cada vez
+  // más agresivos y, solo como último recurso, se van soltando imágenes:
+  // primero las de las tarjetas que tienen VARIAS, después las portadas sueltas.
+  let fittingStorage = false;
+  function trySaveNow(){
+    syncActiveBoard();
+    try{ localStorage.setItem(STORAGE_KEY, JSON.stringify({ boards, active: activeBoardIdx })); return true; }
+    catch(e){ return false; }
+  }
+  function allNodes(){
+    const out = [];
+    const walk = n => { if(!n) return; out.push(n); (n.children || []).forEach(walk); };
+    boards.forEach(b => walk(b && b.tree));
+    return out;
+  }
+  async function recompressDataUrl(src, maxSide, q){
+    if(typeof src !== 'string' || src.indexOf('data:image') !== 0) return src;
+    try{
+      const img = await loadImageEl(src);
+      const w = img.naturalWidth, h = img.naturalHeight;
+      const scale = Math.min(maxSide / Math.max(w, h), 1);
+      const outW = Math.max(1, Math.round(w * scale)), outH = Math.max(1, Math.round(h * scale));
+      const url = bestDataUrl(drawScaled(img, 0, 0, w, h, outW, outH), q);
+      return (url && url.length < src.length) ? url : src;
+    }catch(e){ return src; }
+  }
+  async function recompressAll(maxSide, q){
+    for(const b of boards){
+      if(b.settings && b.settings.bgImage) b.settings.bgImage = await recompressDataUrl(b.settings.bgImage, maxSide, q);
+    }
+    for(const n of allNodes()){
+      if(n.image) n.image = await recompressDataUrl(n.image, maxSide, q);
+      if(Array.isArray(n.gallery)){
+        for(let i = 0; i < n.gallery.length; i++) n.gallery[i] = await recompressDataUrl(n.gallery[i], maxSide, q);
+      }
+    }
+  }
+  // Suelta UNA imagen y devuelve true si quedaba alguna para soltar.
+  function dropOneImage(){
+    const nodes = allNodes();
+    // 1) tarjetas con más de una imagen: se va la última de la galería
+    let best = null, bestCount = 1;
+    for(const n of nodes){
+      const c = (Array.isArray(n.gallery) ? n.gallery.length : 0) + (n.image ? 1 : 0);
+      if(c > bestCount){ best = n; bestCount = c; }
+    }
+    if(best){
+      if(Array.isArray(best.gallery) && best.gallery.length) best.gallery.pop();
+      else best.image = '';
+      return true;
+    }
+    // 2) fondos de tablero (son los archivos más pesados)
+    for(const b of boards){
+      if(b.settings && b.settings.bgImage){
+        b.settings.bgImage = '';
+        if(b.settings.bgType === 'image') b.settings.bgType = 'grid';
+        applyBackground();
+        return true;
+      }
+    }
+    // 3) portadas sueltas, la más pesada primero
+    let heavy = null;
+    for(const n of nodes){
+      const s = n.image || (Array.isArray(n.gallery) && n.gallery[0]) || '';
+      if(s && (!heavy || s.length > heavy.len)) heavy = { node:n, len:s.length };
+    }
+    if(heavy){
+      if(heavy.node.image) heavy.node.image = '';
+      else heavy.node.gallery.pop();
+      return true;
+    }
+    return false;
+  }
+  async function fitToStorage(){
+    if(fittingStorage) return;
+    fittingStorage = true;
+    showToast('Sin espacio: estoy optimizando las imágenes…');
+    try{
+      for(const [side, q] of [[1100, 0.6], [800, 0.52], [560, 0.45]]){
+        await recompressAll(side, q);
+        if(trySaveNow()){
+          showToast('Guardado: comprimí las imágenes para que entre todo.');
+          render();
+          return;
+        }
+      }
+      let dropped = 0;
+      while(dropOneImage()){
+        dropped++;
+        if(trySaveNow()){
+          showToast('Guardado, pero tuve que quitar ' + dropped + (dropped === 1 ? ' imagen.' : ' imágenes.'));
+          render();
+          return;
+        }
+      }
+      showToast('No hay espacio en este dispositivo para guardar el tablero.');
+    } finally {
+      fittingStorage = false;
+    }
   }
 
   // ---- Grid packer: explicit placement so half-height ("h"/"hh") pairs stack correctly ----
@@ -1773,7 +1875,7 @@
   }
   // WebP si el navegador lo soporta (~30% más liviano a igual calidad); si no, JPEG.
   let webpSupported = null;
-  function bestDataUrl(canvas){
+  function bestDataUrl(canvas, q){
     if(webpSupported === null){
       try{
         const probe = document.createElement('canvas');
@@ -1782,7 +1884,7 @@
       }catch(e){ webpSupported = false; }
     }
     try{
-      return webpSupported ? canvas.toDataURL('image/webp', 0.72) : canvas.toDataURL('image/jpeg', 0.78);
+      return webpSupported ? canvas.toDataURL('image/webp', q || 0.72) : canvas.toDataURL('image/jpeg', q || 0.78);
     }catch(e){ return null; }
   }
   function clampCropPan(){
@@ -2246,7 +2348,7 @@
       if(fMoveField.style.display !== 'none' && fMove.value){
         const parent = findParentOf(tree, editingTarget.id);
         if(parent && fMove.value !== parent.id && moveNodeTo(editingTarget.id, fMove.value)){
-          showToast('Tarjeta movida de lugar.');
+          showToast('Movida de lugar.');
         }
       }
     }
