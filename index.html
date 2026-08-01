@@ -526,6 +526,8 @@
   #sheet .swatch{ width:22px; height:22px; }
   #sheet .gallery-list{ gap:6px; margin-bottom:6px; }
   #sheet .gallery-thumb{ width:44px; height:44px; }
+  #sheet .dim-btn{ width:24px; height:24px; font-size:15px; }
+  #sheet .dim-line{ gap:6px; }
   #sheet .image-row{ gap:6px; margin-top:6px; }
   #sheet .chip-btn{ padding:6px 10px; font-size:11.5px; }
   #sheet .sheet-actions{ margin-top:10px; }
@@ -556,17 +558,47 @@
   .field-row.one-line .status-row{ gap:4px; }
   #sheet .field-row.one-line .status-opt{ padding:6px 2px; font-size:9px; }
   .field-row.one-line select{ font-size:12px; padding:7px 6px; }
-  .dim-row{ display:flex; gap:5px; align-items:center; }
-  .dim-row + .dim-row{ margin-top:5px; }
+  /* ---- Tamaño: control compacto de una sola línea (− valor +) ---- */
+  .dim-line{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .dim-step{
+    display:flex; align-items:center; gap:1px; padding:1px 4px;
+    border:1px solid var(--line); border-radius:8px; background:var(--surface);
+  }
   .dim-label{
-    flex:0 0 auto; width:13px; font-family:var(--font-mono); font-size:9.5px;
-    color:var(--ink-faint); text-transform:uppercase;
+    flex:0 0 auto; font-family:var(--font-mono); font-size:9.5px;
+    color:var(--ink-faint); text-transform:uppercase; margin-right:2px;
   }
-  .dim-opt{
-    flex:1 1 0; padding:6px 2px; border-radius:7px; border:1px solid var(--line); background:var(--surface);
-    color:var(--ink-dim); font-family:var(--font-mono); font-size:10.5px; text-align:center; cursor:pointer;
+  .dim-btn{
+    width:26px; height:26px; border:none; border-radius:6px; background:none;
+    color:var(--ink-dim); font-size:16px; line-height:1; padding:0; cursor:pointer;
   }
-  .dim-opt.selected{ border-color:var(--accent-2); color:var(--accent-2); background:rgba(79,209,197,.08); }
+  .dim-btn:active{ color:var(--accent-2); background:var(--surface-2); }
+  .dim-btn[disabled]{ opacity:.25; }
+  .dim-val{
+    min-width:24px; text-align:center; font-family:var(--font-mono);
+    font-size:11.5px; color:var(--accent-2);
+  }
+  .dim-tip{ font-size:10px; color:var(--ink-faint); }
+
+  /* ---- Redimensionar arrastrando la esquina de la tarjeta ---- */
+  .size-handle{
+    position:absolute; right:0; bottom:0; width:26px; height:26px; padding:0;
+    border:none; background:none; color:var(--ink-faint); font-size:11px;
+    line-height:26px; text-align:center; cursor:nwse-resize; touch-action:none;
+    opacity:.5; z-index:3;
+  }
+  .size-handle:active{ opacity:1; color:var(--accent-2); }
+  .card.has-image .size-handle{ color:rgba(255,255,255,.85); }
+  .card.size-h .size-handle{ width:22px; height:22px; line-height:22px; }
+  .card.resizing{ outline:1px dashed var(--accent-2); outline-offset:-1px; }
+  .card.resizing .size-handle{ opacity:1; color:var(--accent-2); }
+  #size-hud{
+    position:fixed; z-index:210; pointer-events:none; white-space:nowrap;
+    font-family:var(--font-mono); font-size:10px; letter-spacing:.05em;
+    background:var(--surface-2); border:1px solid var(--accent-2); color:var(--accent-2);
+    padding:3px 7px; border-radius:6px; opacity:0; transition:opacity 120ms;
+  }
+  #size-hud.show{ opacity:1; }
   #paste-catcher{
     display:none; min-height:46px; margin-top:6px; padding:14px 11px;
     border:1px dashed var(--accent-2); border-radius:8px; background:var(--surface);
@@ -741,21 +773,20 @@
     </div>
     <div class="field">
       <label>Tamaño (ancho × alto)</label>
-      <div class="dim-row" id="f-gw">
-        <span class="dim-label">An</span>
-        <div class="dim-opt" data-v="1">0.5</div>
-        <div class="dim-opt" data-v="2">1</div>
-        <div class="dim-opt" data-v="4">2</div>
-        <div class="dim-opt" data-v="6">3</div>
-        <div class="dim-opt" data-v="8">4</div>
-      </div>
-      <div class="dim-row" id="f-gh">
-        <span class="dim-label">Al</span>
-        <div class="dim-opt" data-v="1">0.5</div>
-        <div class="dim-opt" data-v="2">1</div>
-        <div class="dim-opt" data-v="4">2</div>
-        <div class="dim-opt" data-v="6">3</div>
-        <div class="dim-opt" data-v="8">4</div>
+      <div class="dim-line">
+        <div class="dim-step" id="f-gw">
+          <span class="dim-label">An</span>
+          <button type="button" class="dim-btn" data-d="-1" aria-label="Menos ancho">−</button>
+          <span class="dim-val" id="f-gw-val">1</span>
+          <button type="button" class="dim-btn" data-d="1" aria-label="Más ancho">+</button>
+        </div>
+        <div class="dim-step" id="f-gh">
+          <span class="dim-label">Al</span>
+          <button type="button" class="dim-btn" data-d="-1" aria-label="Menos alto">−</button>
+          <span class="dim-val" id="f-gh-val">1</span>
+          <button type="button" class="dim-btn" data-d="1" aria-label="Más alto">+</button>
+        </div>
+        <span class="dim-tip">o arrastrá la esquina ◢ de la tarjeta</span>
       </div>
     </div>
     <div class="field">
@@ -772,7 +803,7 @@
       </div>
       <div id="paste-catcher" contenteditable="true" role="textbox" aria-label="Pegá la imagen acá" data-ph="Mantené apretado acá y elegí “Pegar”"></div>
       <input type="file" id="f-gallery-file" accept="image/*" multiple hidden>
-      <p class="hint">La primera es la portada. Podés pegar con ⌘/Ctrl+V o con el botón “Pegar imagen”. Esc cierra · Enter guarda.</p>
+      <p class="hint">La primera es la portada · ⌘/Ctrl+V pega · Esc cierra · Enter guarda.</p>
     </div>
     <div class="sheet-actions">
       <button class="btn btn-danger" id="f-delete" style="display:none;">Eliminar</button>
@@ -918,7 +949,9 @@
   // Tamaño libre: cada tarjeta guarda su ancho/alto en unidades finas de la grilla.
   // Los botones muestran multiplicadores (0.5, 1, 2, 3, 4) sobre la tarjeta base (2×2).
   const DIMS = [1,2,4,6,8];
+  const DIM_LABELS = { 1:'0.5', 2:'1', 4:'2', 6:'3', 8:'4' };
   function dimOr(v, fallback){ v = parseInt(v,10); return DIMS.includes(v) ? v : fallback; }
+  function dimLabel(v){ return DIM_LABELS[dimOr(v,2)] || String(v); }
   const DEFAULT_SETTINGS = { bgType:'grid', bgColor:'#0E1B2B', bgImage:'', bgFit:'cover', sortMode:'manual' };
   const SORT_MODES = ['manual','stars-desc','stars-asc','title-asc','title-desc'];
 
@@ -1656,9 +1689,17 @@
       </div>
       <h3 class="card-title">${escapeHtml(child.title)}</h3>
       <p class="card-note">${escapeHtml(child.notes)}</p>
-      ${footer}`;
+      ${footer}
+      <button class="size-handle" aria-label="Cambiar tamaño" title="Arrastrá para cambiar el tamaño">◢</button>`;
 
     card.querySelector('.edit-btn').addEventListener('click', (e)=>{ e.stopPropagation(); openSheet('edit', child); });
+
+    const sizeHandle = card.querySelector('.size-handle');
+    sizeHandle.addEventListener('click', (e)=> e.stopPropagation());
+    sizeHandle.addEventListener('pointerdown', (e)=>{
+      e.preventDefault(); e.stopPropagation();
+      startResize(card, e);
+    });
 
     const handle = card.querySelector('.drag-handle');
     handle.addEventListener('click', (e)=> e.stopPropagation());
@@ -1698,8 +1739,8 @@
       cancelled = true; cleanup();
     }
     card.addEventListener('pointerdown', (e)=>{
-      if(e.target.closest('.drag-handle') || e.target.closest('.edit-btn')) return;
-      if(dragCtx) return;
+      if(e.target.closest('.drag-handle') || e.target.closest('.edit-btn') || e.target.closest('.size-handle')) return;
+      if(dragCtx || resizeCtx) return;
       downEvent = e; cancelled = false;
       card.classList.add('press-hold');
       document.addEventListener('pointermove', onMove);
@@ -1714,6 +1755,85 @@
       }, LONG_PRESS_MS);
     });
   }
+  // ---- Redimensionar arrastrando la esquina inferior derecha de la tarjeta ----
+  // El tamaño se ajusta en vivo (con re-empaquetado de la grilla) y se guarda al soltar.
+  let resizeCtx = null;
+  const sizeHud = document.createElement('div');
+  sizeHud.id = 'size-hud';
+  document.body.appendChild(sizeHud);
+
+  function snapDim(units, max){
+    let best = DIMS[0];
+    for(const d of DIMS){
+      if(max && d > max) continue;
+      if(Math.abs(d - units) < Math.abs(best - units)) best = d;
+    }
+    return best;
+  }
+  function showSizeHud(x, y, w, h){
+    sizeHud.textContent = dimLabel(w) + ' × ' + dimLabel(h);
+    sizeHud.style.left = Math.min(x + 14, window.innerWidth - 78) + 'px';
+    sizeHud.style.top = Math.max(y - 30, 8) + 'px';
+    sizeHud.classList.add('show');
+  }
+  function startResize(card, e){
+    if(resizeCtx || dragCtx) return;
+    if(e.cancelable) e.preventDefault();
+    const grid = card.parentElement;
+    if(!grid) return;
+    const gs = getComputedStyle(grid);
+    const cols = gs.gridTemplateColumns.trim().split(/\s+/).filter(Boolean).length || 4;
+    const gap = parseFloat(gs.columnGap) || 1;
+    const cellW = (grid.clientWidth - gap * (cols - 1)) / cols;
+    const rowH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--row')) || 60;
+    const rect = card.getBoundingClientRect();
+
+    resizeCtx = { card, grid, cols, gap, cellW, rowH, startX:e.clientX, startY:e.clientY,
+                  baseW:rect.width, baseH:rect.height, pointerId:e.pointerId,
+                  gw:dimOr(card.dataset.gw, 2), gh:dimOr(card.dataset.gh, 2), changed:false };
+
+    card.classList.add('resizing');
+    document.body.classList.add('jp-dragging');
+    try{ card.setPointerCapture(e.pointerId); }catch(err){}
+    showSizeHud(e.clientX, e.clientY, resizeCtx.gw, resizeCtx.gh);
+    document.addEventListener('pointermove', onResizeMove, { passive:false });
+    document.addEventListener('pointerup', onResizeEnd);
+    document.addEventListener('pointercancel', onResizeEnd);
+  }
+  function onResizeMove(e){
+    if(!resizeCtx) return;
+    if(e.cancelable) e.preventDefault();
+    const c = resizeCtx;
+    const w = snapDim((c.baseW + (e.clientX - c.startX) + c.gap) / (c.cellW + c.gap), c.cols);
+    const h = snapDim((c.baseH + (e.clientY - c.startY) + c.gap) / (c.rowH + c.gap));
+    if(w !== c.gw || h !== c.gh){
+      c.gw = w; c.gh = h; c.changed = true;
+      c.card.dataset.gw = w;
+      c.card.dataset.gh = h;
+      c.card.classList.toggle('size-h', h === 1);
+      packGrid(c.grid);
+      if(navigator.vibrate){ try{ navigator.vibrate(6); }catch(err){} }
+    }
+    showSizeHud(e.clientX, e.clientY, c.gw, c.gh);
+  }
+  function onResizeEnd(){
+    document.removeEventListener('pointermove', onResizeMove);
+    document.removeEventListener('pointerup', onResizeEnd);
+    document.removeEventListener('pointercancel', onResizeEnd);
+    document.body.classList.remove('jp-dragging');
+    sizeHud.classList.remove('show');
+    if(!resizeCtx) return;
+    const c = resizeCtx;
+    resizeCtx = null;
+    try{ c.card.releasePointerCapture(c.pointerId); }catch(err){}
+    c.card.classList.remove('resizing');
+    if(!c.changed) return;
+    suppressClickUntil = Date.now() + 300;
+    const path = pathTo(tree, c.card.dataset.id);
+    const n = path && path[path.length-1];
+    if(n){ n.gw = c.gw; n.gh = c.gh; persist(); }
+  }
+
   // ---- Reordering (pointer-based drag) ----
   let dragCtx = null;
   function startDrag(card, e){
@@ -2241,18 +2361,30 @@
     });
     if(parent) fMove.value = parent.id;
   }
-  // Los botones escriben directamente el ancho/alto (data-gw / data-gh) de la tarjeta.
+  // Ancho/alto con dos pasos (− / +) sobre la escala DIMS: 0.5 · 1 · 2 · 3 · 4
+  function stepDim(v, dir){
+    const i = DIMS.indexOf(dimOr(v, 2));
+    return DIMS[Math.max(0, Math.min(DIMS.length-1, i + dir))];
+  }
   fGw.addEventListener('click', (e)=>{
-    const b = e.target.closest('.dim-opt'); if(!b) return;
-    selectedGw = dimOr(b.dataset.v, 2); refreshSize();
+    const b = e.target.closest('.dim-btn'); if(!b) return;
+    selectedGw = stepDim(selectedGw, +b.dataset.d); refreshSize();
   });
   fGh.addEventListener('click', (e)=>{
-    const b = e.target.closest('.dim-opt'); if(!b) return;
-    selectedGh = dimOr(b.dataset.v, 2); refreshSize();
+    const b = e.target.closest('.dim-btn'); if(!b) return;
+    selectedGh = stepDim(selectedGh, +b.dataset.d); refreshSize();
   });
   function refreshSize(){
-    fGw.querySelectorAll('.dim-opt').forEach(o=> o.classList.toggle('selected', +o.dataset.v === selectedGw));
-    fGh.querySelectorAll('.dim-opt').forEach(o=> o.classList.toggle('selected', +o.dataset.v === selectedGh));
+    const gwVal = document.getElementById('f-gw-val');
+    const ghVal = document.getElementById('f-gh-val');
+    gwVal.textContent = dimLabel(selectedGw);
+    ghVal.textContent = dimLabel(selectedGh);
+    fGw.querySelectorAll('.dim-btn').forEach(b=>{
+      b.disabled = (stepDim(selectedGw, +b.dataset.d) === selectedGw);
+    });
+    fGh.querySelectorAll('.dim-btn').forEach(b=>{
+      b.disabled = (stepDim(selectedGh, +b.dataset.d) === selectedGh);
+    });
   }
   // Una sola lista de imágenes: la primera hace de portada/fondo de la tarjeta.
   function renderImageList(){
