@@ -558,24 +558,23 @@
     .field-row{ display:flex; gap:12px; align-items:flex-start; }
     .field-row > .field{ flex:1 1 0; min-width:0; }
   }
-  /* Color + estrellas en la primera línea; Estado y Mover a apilados debajo, a lo ancho. */
-  .field-row.one-line{
-    display:flex; gap:8px; align-items:flex-start; flex-wrap:wrap;
-  }
-  .field-row.one-line > .field{ margin-bottom:8px; }
+  /* Colores en columna (izquierda) + Estrellas / Estado / Tamaño / Mover a apilados a la derecha.
+     Todo visible sin scroll extra, sin apretujar. */
+  .field-row.one-line{ display:flex; gap:14px; align-items:flex-start; margin-bottom:10px; }
   .field-row.one-line > .f-color{ flex:0 0 auto; }
-  .field-row.one-line > .f-stars-col{ flex:1 1 auto; }
-  .field-row.one-line > .f-status-col{ flex:1 1 100%; min-width:0; }
-  .field-row.one-line > .f-move-col{ flex:1 1 100%; min-width:0; }
-  #sheet .field-row.one-line .status-opt{ white-space:nowrap; }
-  .field-row.one-line .swatches{ gap:5px; max-width:70px; }
-  #sheet .field-row.one-line .swatch{ width:18px; height:18px; }
-  .field-row.one-line .stars-pick{ gap:1px; }
-  .field-row.one-line .stars-pick .star{ font-size:16px; padding:1px; }
-  .field-row.one-line .stars-pick .star-clear{ margin-left:3px; font-size:9px; padding:3px 4px; }
-  .field-row.one-line .status-row{ gap:4px; }
-  #sheet .field-row.one-line .status-opt{ padding:6px 2px; font-size:9px; }
-  .field-row.one-line select{ font-size:12px; padding:7px 6px; }
+  .field-row.one-line .f-right{ flex:1 1 auto; min-width:0; display:flex; flex-direction:column; }
+  #sheet .field-row.one-line .f-right > .field{ margin-bottom:7px; }
+  #sheet .field-row.one-line .f-right > .field:last-child{ margin-bottom:0; }
+  .field-row.one-line .swatches{ display:grid; grid-template-columns:repeat(2, 24px); gap:7px; padding-top:2px; }
+  #sheet .field-row.one-line .swatch{ width:24px; height:24px; }
+  .field-row.one-line .stars-pick{ gap:2px; }
+  .field-row.one-line .stars-pick .star{ font-size:19px; padding:1px 2px; }
+  .field-row.one-line .stars-pick .star-clear{ margin-left:4px; font-size:9.5px; padding:3px 6px; }
+  .field-row.one-line .status-row{ gap:6px; }
+  #sheet .field-row.one-line .status-opt{ padding:7px 4px; font-size:10px; white-space:nowrap; }
+  .field-row.one-line select{ font-size:12.5px; padding:8px 8px; }
+  .field-row.one-line .dim-line{ flex-wrap:nowrap; }
+  .field-row.one-line .dim-tip{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   /* ---- Tamaño: control compacto de una sola línea (− valor +) ---- */
   .dim-line{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
   .dim-step{
@@ -768,46 +767,48 @@
         <label>Color</label>
         <div class="swatches" id="f-colors"></div>
       </div>
-      <div class="field f-stars-col">
-        <label>Estrellas</label>
-        <div class="stars-pick" id="f-stars">
-          <span class="star" data-v="1">★</span>
-          <span class="star" data-v="2">★</span>
-          <span class="star" data-v="3">★</span>
-          <span class="star" data-v="4">★</span>
-          <span class="star" data-v="5">★</span>
-          <button type="button" class="star-clear" id="f-stars-clear">Sin</button>
+      <div class="f-right">
+        <div class="field f-stars-col">
+          <label>Estrellas</label>
+          <div class="stars-pick" id="f-stars">
+            <span class="star" data-v="1">★</span>
+            <span class="star" data-v="2">★</span>
+            <span class="star" data-v="3">★</span>
+            <span class="star" data-v="4">★</span>
+            <span class="star" data-v="5">★</span>
+            <button type="button" class="star-clear" id="f-stars-clear">Sin</button>
+          </div>
         </div>
-      </div>
-      <div class="field f-status-col">
-        <label>Estado</label>
-        <div class="status-row" id="f-status">
-          <div class="status-opt" data-v="idea">Idea</div>
-          <div class="status-opt" data-v="building">Desarrollo</div>
-          <div class="status-opt" data-v="live">Activo</div>
+        <div class="field f-status-col">
+          <label>Estado</label>
+          <div class="status-row" id="f-status">
+            <div class="status-opt" data-v="idea">Idea</div>
+            <div class="status-opt" data-v="building">Desarrollo</div>
+            <div class="status-opt" data-v="live">Activo</div>
+          </div>
         </div>
-      </div>
-      <div class="field f-move-col" id="f-move-field" style="display:none;">
-        <label for="f-move">Mover a</label>
-        <select id="f-move"></select>
-      </div>
-    </div>
-    <div class="field">
-      <label>Tamaño (ancho × alto)</label>
-      <div class="dim-line">
-        <div class="dim-step" id="f-gw">
-          <span class="dim-label">An</span>
-          <button type="button" class="dim-btn" data-d="-1" aria-label="Menos ancho">−</button>
-          <span class="dim-val" id="f-gw-val">1</span>
-          <button type="button" class="dim-btn" data-d="1" aria-label="Más ancho">+</button>
+        <div class="field f-size-col">
+          <label>Tamaño (ancho × alto)</label>
+          <div class="dim-line">
+            <div class="dim-step" id="f-gw">
+              <span class="dim-label">An</span>
+              <button type="button" class="dim-btn" data-d="-1" aria-label="Menos ancho">−</button>
+              <span class="dim-val" id="f-gw-val">1</span>
+              <button type="button" class="dim-btn" data-d="1" aria-label="Más ancho">+</button>
+            </div>
+            <div class="dim-step" id="f-gh">
+              <span class="dim-label">Al</span>
+              <button type="button" class="dim-btn" data-d="-1" aria-label="Menos alto">−</button>
+              <span class="dim-val" id="f-gh-val">1</span>
+              <button type="button" class="dim-btn" data-d="1" aria-label="Más alto">+</button>
+            </div>
+            <span class="dim-tip">o arrastrá ◢ en la tarjeta</span>
+          </div>
         </div>
-        <div class="dim-step" id="f-gh">
-          <span class="dim-label">Al</span>
-          <button type="button" class="dim-btn" data-d="-1" aria-label="Menos alto">−</button>
-          <span class="dim-val" id="f-gh-val">1</span>
-          <button type="button" class="dim-btn" data-d="1" aria-label="Más alto">+</button>
+        <div class="field f-move-col" id="f-move-field" style="display:none;">
+          <label for="f-move">Mover a</label>
+          <select id="f-move"></select>
         </div>
-        <span class="dim-tip">o arrastrá la esquina ◢ de la tarjeta</span>
       </div>
     </div>
     <div class="field">
