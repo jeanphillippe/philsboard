@@ -25,7 +25,13 @@
     --font-mono:'IBM Plex Mono', ui-monospace, 'SF Mono', monospace;
     --font-sans:'IBM Plex Sans', system-ui, -apple-system, sans-serif;
     --row:60px;
+    --font-scale:1;
   }
+  /* En pantallas más grandes (tablet apaisada, escritorio, TV) las filas de la
+     grilla crecen para que las tarjetas no queden enanas ni sobre pantalla vacía. */
+  @media (min-width:860px){ :root{ --row:72px; } }
+  @media (min-width:1200px){ :root{ --row:84px; } }
+  @media (min-width:1600px){ :root{ --row:96px; } }
   *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html,body{
     height:100%; margin:0; overflow:hidden; overscroll-behavior:none;
@@ -140,6 +146,23 @@
     font-size:13px; text-align:left; padding:9px 10px; border-radius:6px; cursor:pointer;
   }
   #menu-pop button:active{ background:var(--surface); }
+  /* ---- Escala de texto (A− / A / A+) ---- */
+  #menu-font{
+    display:flex; align-items:center; gap:4px;
+    padding:6px 10px 8px; margin-bottom:4px;
+    border-bottom:1px solid var(--line);
+  }
+  #menu-font .mf-label{
+    flex:1 1 auto; font-family:var(--font-mono); font-size:10.5px;
+    color:var(--ink-faint); text-transform:uppercase; letter-spacing:.05em;
+  }
+  #menu-pop #menu-font button{
+    flex:0 0 auto; width:34px; height:30px; padding:0;
+    border:1px solid var(--line); border-radius:7px; background:var(--surface);
+    font-family:var(--font-mono); font-size:12px; text-align:center; color:var(--ink-dim);
+  }
+  #menu-pop #menu-font button:active{ color:var(--ink); border-color:var(--accent-2); }
+  #menu-pop #menu-font button.on{ color:var(--accent-2); border-color:var(--accent-2); }
   #menu-pop button.danger{ color:#F27E9C; }
 
   /* ---- Selector de tableros (se abre tocando el nombre del tablero) ---- */
@@ -198,9 +221,9 @@
   .detail{ padding:10px 16px 10px; border-bottom:1px dashed var(--line); margin:0 16px 12px; }
   .detail-top{ display:flex; align-items:center; gap:8px; margin-bottom:8px; }
   .detail-row{ display:flex; align-items:center; justify-content:space-between; margin-bottom:2px; }
-  .detail h1{ font-family:var(--font-mono); font-size:19px; margin:0; flex:1 1 auto; word-break:break-word; }
-  .detail-pitch{ color:var(--ink); font-size:13.5px; font-style:italic; margin:7px 0 4px; }
-  .detail-notes{ color:var(--ink-dim); font-size:13px; line-height:1.55; white-space:pre-wrap; margin:8px 0 0; }
+  .detail h1{ font-family:var(--font-mono); font-size:calc(19px * var(--font-scale)); margin:0; flex:1 1 auto; word-break:break-word; }
+  .detail-pitch{ color:var(--ink); font-size:calc(13.5px * var(--font-scale)); font-style:italic; margin:7px 0 4px; }
+  .detail-notes{ color:var(--ink-dim); font-size:calc(13px * var(--font-scale)); line-height:1.55; white-space:pre-wrap; margin:8px 0 0; }
   .note-link{
     color:var(--accent-2); text-decoration:underline; text-underline-offset:2px;
     word-break:break-all; cursor:pointer;
@@ -286,7 +309,7 @@
     width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center;
     background:rgba(8,14,22,.55); border:1px solid rgba(255,255,255,.25); color:#fff; font-size:12px;
   }
-  .detail-hero .hero-title{ position:relative; z-index:2; font-family:var(--font-mono); font-size:20px; margin:0; color:#fff; text-shadow:0 2px 12px rgba(0,0,0,.55); }
+  .detail-hero .hero-title{ position:relative; z-index:2; font-family:var(--font-mono); font-size:calc(20px * var(--font-scale)); margin:0; color:#fff; text-shadow:0 2px 12px rgba(0,0,0,.55); }
 
   .gallery-slider{
     display:flex; gap:6px; overflow-x:auto; scroll-snap-type:x proximity;
@@ -313,12 +336,14 @@
 
   .grid{
     display:grid; grid-template-columns:repeat(4, 1fr);
-    grid-auto-rows:var(--row);
+    grid-auto-rows:calc(var(--row) * var(--font-scale));
     gap:1px; background:var(--line); border:1px solid var(--line);
     margin:8px 16px 16px;
   }
   @media (min-width:560px){ .grid{ grid-template-columns:repeat(6, 1fr); } }
   @media (min-width:860px){ .grid{ grid-template-columns:repeat(8, 1fr); } }
+  @media (min-width:1200px){ .grid{ grid-template-columns:repeat(10, 1fr); } }
+  @media (min-width:1600px){ .grid{ grid-template-columns:repeat(12, 1fr); } }
 
   @keyframes cardIn{ from{ opacity:0; transform:translateY(8px) scale(.96); } to{ opacity:1; transform:none; } }
 
@@ -349,7 +374,7 @@
      como una tarjeta Completa, solo que el doble de ancha, así el título, la nota
      completa y el footer quedan visibles sin recortarse. */
   .card.size-h{ grid-row:span 1; padding:6px 8px 5px; }
-  .card.size-h .card-title{ font-size:11px; margin-bottom:2px; }
+  .card.size-h .card-title{ font-size:calc(11px * var(--font-scale)); margin-bottom:2px; }
   .card.size-h .card-note{ -webkit-line-clamp:1; }
   .card.size-h .card-foot{ display:none; }
   .card.size-h .card-top{ margin-bottom:3px; }
@@ -375,14 +400,14 @@
   }
   .edit-btn:active{ background:var(--surface-2); border-color:var(--line); }
   .card-title{
-    font-family:var(--font-mono); font-weight:600; font-size:12.5px; letter-spacing:.01em;
+    font-family:var(--font-mono); font-weight:600; font-size:calc(12.5px * var(--font-scale)); letter-spacing:.01em;
     margin:0 0 4px; text-transform:uppercase; line-height:1.28;
   }
   .card-note{
-    margin:0; color:var(--ink-dim); font-size:11.5px; line-height:1.4; flex:1 1 auto;
+    margin:0; color:var(--ink-dim); font-size:calc(11.5px * var(--font-scale)); line-height:1.4; flex:1 1 auto;
     white-space:pre-line; display:-webkit-box; -webkit-line-clamp:5; -webkit-box-orient:vertical; overflow:hidden;
   }
-  .card-foot{ margin-top:6px; font-family:var(--font-mono); font-size:9px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.04em; }
+  .card-foot{ margin-top:6px; font-family:var(--font-mono); font-size:calc(9px * var(--font-scale)); color:var(--ink-faint); text-transform:uppercase; letter-spacing:.04em; }
 
   /* ---- Estrellas ---- */
   .card-stars{
@@ -735,6 +760,12 @@
     <button data-v="title-desc">Z → A por título</button>
   </div>
   <div id="menu-pop">
+    <div id="menu-font">
+      <span class="mf-label">Aa Texto</span>
+      <button id="font-dec" aria-label="Texto más chico">A−</button>
+      <button id="font-reset" aria-label="Tamaño normal">A</button>
+      <button id="font-inc" aria-label="Texto más grande">A+</button>
+    </div>
     <button id="menu-bg">🎨 Fondo del tablero</button>
     <button id="menu-export">⇪ Exportar datos</button>
     <button id="menu-import">⇩ Importar datos</button>
@@ -1807,7 +1838,9 @@
     const cols = gs.gridTemplateColumns.trim().split(/\s+/).filter(Boolean).length || 4;
     const gap = parseFloat(gs.columnGap) || 1;
     const cellW = (grid.clientWidth - gap * (cols - 1)) / cols;
-    const rowH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--row')) || 60;
+    const rootCS = getComputedStyle(document.documentElement);
+    const rowH = (parseFloat(rootCS.getPropertyValue('--row')) || 60)
+               * (parseFloat(rootCS.getPropertyValue('--font-scale')) || 1);
     const rect = card.getBoundingClientRect();
 
     resizeCtx = { card, grid, cols, gap, cellW, rowH, startX:e.clientX, startY:e.clientY,
@@ -3073,6 +3106,28 @@
     menuPop.classList.remove('open');
     openBgSheet();
   });
+
+  // ---- Escala de texto global (se guarda por dispositivo) ----
+  const FONT_SCALE_KEY = 'jp_font_scale';
+  const FONT_SCALE_MIN = 0.85, FONT_SCALE_MAX = 1.5, FONT_SCALE_STEP = 0.1;
+  let fontScale = parseFloat(storageGet(FONT_SCALE_KEY));
+  if(!isFinite(fontScale)) fontScale = 1;
+  fontScale = Math.min(FONT_SCALE_MAX, Math.max(FONT_SCALE_MIN, fontScale));
+  function applyFontScale(){
+    document.documentElement.style.setProperty('--font-scale', fontScale);
+    document.getElementById('font-dec').classList.toggle('on', fontScale < 1);
+    document.getElementById('font-reset').classList.toggle('on', Math.abs(fontScale - 1) < 0.01);
+    document.getElementById('font-inc').classList.toggle('on', fontScale > 1);
+  }
+  function setFontScale(v){
+    fontScale = Math.round(Math.min(FONT_SCALE_MAX, Math.max(FONT_SCALE_MIN, v)) * 100) / 100;
+    storageSet(FONT_SCALE_KEY, String(fontScale));
+    applyFontScale();
+  }
+  document.getElementById('font-dec').addEventListener('click', (e)=>{ e.stopPropagation(); setFontScale(fontScale - FONT_SCALE_STEP); });
+  document.getElementById('font-inc').addEventListener('click', (e)=>{ e.stopPropagation(); setFontScale(fontScale + FONT_SCALE_STEP); });
+  document.getElementById('font-reset').addEventListener('click', (e)=>{ e.stopPropagation(); setFontScale(1); });
+  applyFontScale();
   document.getElementById('menu-export').addEventListener('click', ()=>{
     menuPop.classList.remove('open');
     openIOSheet('export');
