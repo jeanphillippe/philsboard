@@ -95,6 +95,13 @@
   #top-actions button:active{ color:var(--ink); border-color:var(--accent-2); }
   #add-btn{ color:var(--accent) !important; font-size:19px !important; line-height:1; }
   #search-btn.on, #sort-btn.on{ color:var(--accent-2) !important; border-color:var(--accent-2) !important; }
+  /* ---- Modo pantalla completa: se oculta el header y quedan solo las tarjetas.
+     El ojo queda flotando, semitransparente, para poder volver. ---- */
+  body.zen header#crumbbar, body.zen #search-bar{ display:none !important; }
+  body.zen #top-actions button:not(#eye-btn){ display:none; }
+  body.zen #eye-btn{ opacity:.35; background:transparent; border-color:transparent; }
+  body.zen #eye-btn:active{ opacity:1; }
+  body.zen main#board-wrap{ padding-top:calc(env(safe-area-inset-top,0px) + 12px); }
 
   #search-bar{
     position:fixed; z-index:20; left:9px; right:9px;
@@ -342,8 +349,6 @@
   }
   @media (min-width:560px){ .grid{ grid-template-columns:repeat(6, 1fr); } }
   @media (min-width:860px){ .grid{ grid-template-columns:repeat(8, 1fr); } }
-  @media (min-width:1200px){ .grid{ grid-template-columns:repeat(10, 1fr); } }
-  @media (min-width:1600px){ .grid{ grid-template-columns:repeat(12, 1fr); } }
 
   @keyframes cardIn{ from{ opacity:0; transform:translateY(8px) scale(.96); } to{ opacity:1; transform:none; } }
 
@@ -743,6 +748,7 @@
     <nav id="crumbs"></nav>
   </header>
   <div id="top-actions">
+    <button id="eye-btn" aria-label="Ocultar interfaz" title="Ocultar interfaz">👁</button>
     <button id="add-btn" aria-label="Nueva" title="Nueva">+</button>
     <button id="search-btn" aria-label="Buscar" title="Buscar">⌕</button>
     <button id="sort-btn" aria-label="Ordenar" title="Ordenar">⇅</button>
@@ -3128,6 +3134,14 @@
   document.getElementById('font-inc').addEventListener('click', (e)=>{ e.stopPropagation(); setFontScale(fontScale + FONT_SCALE_STEP); });
   document.getElementById('font-reset').addEventListener('click', (e)=>{ e.stopPropagation(); setFontScale(1); });
   applyFontScale();
+
+  // ---- Ojo: ocultar/mostrar la interfaz para tableros a pantalla completa ----
+  document.getElementById('eye-btn').addEventListener('click', ()=>{
+    menuPop.classList.remove('open'); sortPop.classList.remove('open');
+    const zen = document.body.classList.toggle('zen');
+    if(zen && document.body.classList.contains('searching')) searchBtn.click();
+    document.getElementById('eye-btn').title = zen ? 'Mostrar interfaz' : 'Ocultar interfaz';
+  });
   document.getElementById('menu-export').addEventListener('click', ()=>{
     menuPop.classList.remove('open');
     openIOSheet('export');
